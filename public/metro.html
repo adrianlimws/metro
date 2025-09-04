@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Metroinfo Vehicle Positions</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+      #map {
+        height: 100vh;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <!-- Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+      // Initialize Leaflet map (default center on Christchurch, NZ)
+      const map = L.map("map").setView([-43.5321, 172.6362], 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(map);
+
+      async function loadVehicles() {
+        try {
+          // Fetch JSON from your Node.js proxy
+          const response = await fetch("http://localhost:3000/vehicles");
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+
+          const feed = await response.json();
+
+          // Clear old markers
+          if (window.vehicleLayer) {
+            map.removeLayer(window.vehicleLayer);
+          }
+
+          const markers = [];
+          feed.entity.forEach((entity) => {
+            if (entity.vehicle && entity.vehicle.position) {
+              const { latitude, longitude } = entity.vehicle.position;
+              const vehicleId = entity.vehicle.vehicle?.id || "Unknown";
+              const routeId = entity.vehicle.trip?.routeId || "Unknown";
+
+              const marker = L.marker([latitude, longitude]).bindPopup(
+                `<b>Vehicle:</b> ${vehicleId}<br><b>Route:</b> ${routeId}`
+              );
+              markers.push(marker);
+            }
+          });
+
+          // Add all markers to the map
+          window.vehicleLayer = L.layerGroup(markers).addTo(map);
+
+        } catch (err) {
+          console.error("Error loading vehicles:", err);
+        }
+      }
+
+      // Load immediately and refresh every 30s
+      loadVehicles();
+      setInterval(loadVehicles, 30000);
+    </script>
+  </body>
+</html>
