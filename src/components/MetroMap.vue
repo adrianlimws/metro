@@ -30,6 +30,7 @@
 import L from 'leaflet'
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { MAP_CONFIG, API_CONFIG, ERROR_MESSAGES } from '../constants'
+import { getRouteById } from '../data/busRoutes'
 
 export default {
   name: 'MetroMap',
@@ -39,7 +40,8 @@ export default {
       default: false
     }
   },
-  setup(props) {
+  emits: ['data-fetched'],
+  setup(props, { emit }) {
     const map = ref(null)
     const vehicleLayer = ref(null)
     const vehicles = ref([])
@@ -61,6 +63,9 @@ export default {
         const feed = await response.json()
         vehicles.value = feed.entity || []
 
+        // Emit event to reset countdown in parent
+        emit('data-fetched')
+
       } catch (err) {
         console.error('Error loading vehicles:', err)
         error.value = err.message || ERROR_MESSAGES.VEHICLES_FETCH_FAILED
@@ -75,13 +80,24 @@ export default {
         .map(entity => {
           const { latitude, longitude } = entity.vehicle.position
           const vehicleId = entity.vehicle.vehicle?.id || 'Unknown'
-          const routeId = entity.vehicle.trip?.routeId || 'Unknown'
+          const fullRouteId = entity.vehicle.trip?.routeId || 'Unknown'
+
+          // Extract the actual route number from the API format (e.g., "100_0432_8_3" -> "100")
+          const routeId = fullRouteId.split('_')[0]
+
+          // Get route information for styling
+          const routeInfo = getRouteById(routeId)
+          const routeColor = routeInfo?.color || '#666666'
+          const routeName = routeInfo?.name || 'Unknown Route'
 
           return {
             position: [latitude, longitude],
             vehicleId,
             routeId,
-            popup: `<b>Vehicle:</b> ${vehicleId}<br><b>Route:</b> ${routeId}`
+            fullRouteId,
+            routeColor,
+            routeName,
+            popup: `<b>Vehicle:</b> ${vehicleId}<br><b>Route:</b> ${routeId}<br><b>Name:</b> ${routeName}<br><b>Full ID:</b> ${fullRouteId}`
           }
         })
     }
@@ -96,6 +112,43 @@ export default {
       }).addTo(map.value)
     }
 
+    const createRouteCircleMarker = (vehicle) => {
+      // Create a custom HTML element for the route circle
+      const circleElement = document.createElement('div')
+      circleElement.className = 'route-circle-marker'
+      circleElement.style.cssText = `
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: ${vehicle.routeColor};
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 12px;
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      `
+
+      // Add hover effect
+      circleElement.addEventListener('mouseenter', () => {
+        circleElement.style.transform = 'scale(1.2)'
+      })
+
+      circleElement.addEventListener('mouseleave', () => {
+        circleElement.style.transform = 'scale(1)'
+      })
+
+      // Set the route number text
+      circleElement.textContent = vehicle.routeId
+
+      return circleElement
+    }
+
     const updateVehicleMarkers = () => {
       if (!map.value) return
 
@@ -105,7 +158,16 @@ export default {
       }
 
       const markers = getVehicleMarkers().map(vehicle => {
-        const marker = L.marker(vehicle.position).bindPopup(vehicle.popup)
+        const circleElement = createRouteCircleMarker(vehicle)
+        const marker = L.marker(vehicle.position, {
+          icon: L.divIcon({
+            html: circleElement,
+            className: 'custom-route-marker',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+          })
+        }).bindPopup(vehicle.popup)
+
         return marker
       })
 
@@ -164,7 +226,9 @@ export default {
 #map {
   height: 100vh;
   flex: 1;
+  position: relative;
 }
+
 
 .loading-indicator {
   position: absolute;
@@ -246,5 +310,28 @@ export default {
   100% {
     transform: rotate(360deg);
   }
+}
+
+/* Custom route marker styles */
+.custom-route-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.route-circle-marker {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Ensure proper z-index for markers */
+.leaflet-marker-icon {
+  z-index: 1000;
+}
+
+/* Hover state for route circles */
+.route-circle-marker:hover {
+  z-index: 1001;
 }
 </style>

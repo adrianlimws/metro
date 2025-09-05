@@ -4,7 +4,7 @@ import { busRoutes, searchRoutes } from '../data/busRoutes.js'
 import { XMarkIcon, Bars3Icon, ChevronRightIcon } from '@heroicons/vue/24/outline'
 import { useScreenSize } from '../composables/useScreenSize'
 import { useSearch } from '../composables/useSearch'
-import { ROUTE_STATUS } from '../constants'
+import { ROUTE_STATUS, MAP_CONFIG } from '../constants'
 
 export default {
   name: 'RouteSidebar',
@@ -12,6 +12,24 @@ export default {
     XMarkIcon,
     Bars3Icon,
     ChevronRightIcon
+  },
+  props: {
+    countdownSeconds: {
+      type: Number,
+      default: 0
+    },
+    countdownPercentage: {
+      type: Number,
+      default: 0
+    },
+    isLoading: {
+      type: Boolean,
+      default: false
+    },
+    error: {
+      type: String,
+      default: null
+    }
   },
   emits: ['sidebar-toggle', 'route-selected'],
   setup(props, { emit }) {
@@ -42,6 +60,8 @@ export default {
 
     const getRouteStatus = () => ROUTE_STATUS.ACTIVE
 
+    const countdownPercentage = computed(() => props.countdownPercentage)
+
     return {
       routes,
       searchQuery,
@@ -49,7 +69,11 @@ export default {
       isOpen,
       toggleSidebar,
       clearSearch,
-      getRouteStatus
+      getRouteStatus,
+      countdownSeconds: computed(() => props.countdownSeconds),
+      countdownPercentage,
+      isLoading: computed(() => props.isLoading),
+      error: computed(() => props.error)
     }
   }
 }
@@ -94,6 +118,14 @@ export default {
           </div>
           <div class="live-badge">Live</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Refresh countdown bar -->
+    <div v-if="!isLoading && !error" class="refresh-countdown-bar">
+      <div class="countdown-fill" :style="{ width: countdownPercentage + '%' }"></div>
+      <div class="countdown-text">
+        Next refresh in {{ Math.ceil(countdownSeconds) }}s
       </div>
     </div>
 
@@ -197,10 +229,10 @@ export default {
   backdrop-filter: blur(24px);
   border-left: 1px solid rgba(229, 231, 235, 0.5);
   overflow-y: auto;
+  overflow-x: hidden;
   width: 20rem;
   transform: translateX(0);
-  transition: all 0.3s ease-in-out;
-  animation: slideIn 0.3s ease-out;
+  box-sizing: border-box;
 }
 
 .sidebar-open {
@@ -364,6 +396,57 @@ export default {
   font-family: monospace;
 }
 
+/* Refresh countdown bar */
+.refresh-countdown-bar {
+  position: sticky;
+  top: 5.5rem;
+  height: 4px;
+  background-color: rgba(0, 0, 0, 0.1);
+  z-index: 15;
+  overflow: hidden;
+}
+
+.countdown-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8, #1e40af);
+  transition: width 0.1s linear;
+  position: relative;
+}
+
+.countdown-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+.countdown-text {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 0.75rem;
+  color: #374151;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Search Section */
 .search-section {
   position: sticky;
@@ -373,10 +456,14 @@ export default {
   background-color: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(24px);
   border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .search-container {
   position: relative;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .search-input {
@@ -394,6 +481,8 @@ export default {
   font-size: 0.875rem;
   font-weight: 500;
   color: #374151;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .search-input:focus {
@@ -694,17 +783,6 @@ export default {
 }
 
 /* Animations */
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
 
 @keyframes pulse {
 

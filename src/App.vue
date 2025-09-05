@@ -1,8 +1,9 @@
 <template>
   <div id="app">
     <div class="app-container">
-      <MetroMap :sidebar-open="sidebarOpen" />
-      <RouteSidebar ref="sidebar" @sidebar-toggle="handleSidebarToggle" />
+      <MetroMap ref="metroMap" :sidebar-open="sidebarOpen" @data-fetched="resetCountdown" />
+      <RouteSidebar ref="sidebar" :countdown-seconds="countdownSeconds" :countdown-percentage="countdownPercentage"
+        :is-loading="isLoading" :error="error" @sidebar-toggle="handleSidebarToggle" />
     </div>
 
     <!-- Mobile backdrop -->
@@ -18,11 +19,12 @@
 </template>
 
 <script>
-import { ref, watch } from 'vue'
+import { ref, watch, computed, onUnmounted } from 'vue'
 import MetroMap from './components/MetroMap.vue'
 import RouteSidebar from './components/RouteSidebar.vue'
 import { Bars3Icon } from '@heroicons/vue/24/outline'
 import { useScreenSize } from './composables/useScreenSize'
+import { MAP_CONFIG } from './constants'
 
 export default {
   name: 'App',
@@ -34,6 +36,13 @@ export default {
   setup() {
     const sidebarOpen = ref(false)
     const { isDesktop } = useScreenSize()
+
+    // Countdown timer data
+    const countdownSeconds = ref(0)
+    const isLoading = ref(false)
+    const error = ref(null)
+    const countdownInterval = ref(null)
+    const metroMap = ref(null)
 
     // Watch for screen size changes and adjust sidebar state
     watch(isDesktop, (newIsDesktop) => {
@@ -51,11 +60,66 @@ export default {
       sidebarOpen.value = isOpen
     }
 
+    // Countdown functions
+    const startCountdown = () => {
+      if (countdownInterval.value) {
+        clearInterval(countdownInterval.value)
+      }
+
+      countdownSeconds.value = MAP_CONFIG.REFRESH_INTERVAL / 1000
+
+      countdownInterval.value = setInterval(() => {
+        countdownSeconds.value -= 0.1
+        if (countdownSeconds.value <= 0) {
+          countdownSeconds.value = MAP_CONFIG.REFRESH_INTERVAL / 1000
+        }
+      }, 100)
+    }
+
+    const resetCountdown = () => {
+      countdownSeconds.value = MAP_CONFIG.REFRESH_INTERVAL / 1000
+      if (!countdownInterval.value) {
+        startCountdown()
+      }
+    }
+
+    const stopCountdown = () => {
+      if (countdownInterval.value) {
+        clearInterval(countdownInterval.value)
+        countdownInterval.value = null
+      }
+    }
+
+    // Computed properties
+    const countdownPercentage = computed(() => {
+      const totalSeconds = MAP_CONFIG.REFRESH_INTERVAL / 1000
+      return ((totalSeconds - countdownSeconds.value) / totalSeconds) * 100
+    })
+
+    // Get loading and error states from MetroMap component
+    const isLoadingFromMap = computed(() => metroMap.value?.isLoading || false)
+    const errorFromMap = computed(() => metroMap.value?.error || null)
+
+    // Start countdown on mount
+    startCountdown()
+
+    // Cleanup on unmount
+    onUnmounted(() => {
+      stopCountdown()
+    })
+
     return {
       sidebarOpen,
       isDesktop,
       toggleSidebar,
-      handleSidebarToggle
+      handleSidebarToggle,
+      countdownSeconds,
+      countdownPercentage,
+      isLoading: isLoadingFromMap,
+      error: errorFromMap,
+      metroMap,
+      resetCountdown,
+      stopCountdown
     }
   }
 }
