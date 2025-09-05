@@ -56,76 +56,64 @@ export default {
 </script>
 
 <template>
-  <div class="sidebar-container h-screen bg-white/80 backdrop-blur-xl border-l border-gray-200/50 overflow-y-auto
-              w-80 lg:w-80 md:w-72 sm:w-64
-              transform transition-all duration-300 ease-in-out" :class="isOpen ? 'block' : 'hidden lg:block'"
+  <div class="sidebar-container" :class="isOpen ? 'sidebar-open' : 'sidebar-closed'"
     style="min-height: 100vh; box-shadow: -8px 0 32px rgba(0,0,0,0.04);">
 
     <!-- Header -->
-    <div
-      class="sticky top-0 z-20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-6 relative overflow-hidden">
+    <div class="sidebar-header">
       <!-- Background Pattern -->
-      <div class="absolute inset-0 opacity-5">
-        <div class="absolute inset-0"
+      <div class="header-pattern">
+        <div class="pattern-overlay"
           style="background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.3) 1px, transparent 0); background-size: 20px 20px;">
         </div>
       </div>
 
-      <div class="relative z-10">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center space-x-3">
-            <div
-              class="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/20">
-              <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="header-content">
+        <div class="header-top">
+          <div class="header-left">
+            <div class="header-icon">
+              <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
               </svg>
             </div>
-            <div>
-              <h1 class="text-2xl font-bold tracking-tight">Bus Routes</h1>
-              <p class="text-slate-300 text-sm font-medium">Metro Transit</p>
+            <div class="header-text">
+              <h1 class="header-title">Bus Routes</h1>
+              <p class="header-subtitle">Metro Transit</p>
             </div>
           </div>
-          <button
-            class="hidden lg:hidden md:block sm:block p-2.5 hover:bg-white/10 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20"
-            @click="toggleSidebar">
-            <XMarkIcon class="w-5 h-5" />
+          <button class="close-button" @click="toggleSidebar">
+            <XMarkIcon class="close-icon" />
           </button>
         </div>
 
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-3">
-            <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-lg shadow-emerald-400/50"></div>
-            <p class="text-sm text-slate-300 font-medium">{{ routes.length }} routes available</p>
+        <div class="header-bottom">
+          <div class="status-indicator">
+            <div class="status-dot"></div>
+            <p class="status-text">{{ routes.length }} routes available</p>
           </div>
-          <div class="text-xs text-slate-400 font-mono">Live</div>
+          <div class="live-badge">Live</div>
         </div>
       </div>
     </div>
 
     <!-- Search/Filter -->
-    <div class="sticky top-[88px] z-10 p-6 bg-white/60 backdrop-blur-xl border-b border-gray-200/50">
-      <div class="relative group">
-        <input v-model="searchQuery" type="text" placeholder="Search routes..." class="w-full pl-12 pr-12 py-4 border border-gray-200/60 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm 
-                      focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 focus:shadow-lg focus:bg-white
-                      transition-all duration-300 placeholder-gray-400 text-gray-700 font-medium
-                      group-hover:border-gray-300/60 group-hover:shadow-md">
+    <div class="search-section">
+      <div class="search-container">
+        <input v-model="searchQuery" type="text" placeholder="Search routes..." class="search-input">
 
         <!-- Search Icon -->
-        <div class="absolute left-4 top-1/2 -translate-y-1/2">
-          <svg class="w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none"
-            stroke="currentColor" viewBox="0 0 24 24">
+        <div class="search-icon">
+          <svg class="search-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
         </div>
 
         <!-- Clear Button -->
-        <div v-if="searchQuery" class="absolute right-4 top-1/2 -translate-y-1/2">
-          <button @click="clearSearch"
-            class="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200"
-            aria-label="Clear search">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div v-if="searchQuery" class="clear-button">
+          <button @click="clearSearch" class="clear-btn" aria-label="Clear search">
+            <svg class="clear-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
@@ -134,62 +122,52 @@ export default {
     </div>
 
     <!-- Routes List -->
-    <div class="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white/50 custom-scrollbar">
+    <div class="routes-list">
       <!-- Empty State -->
-      <div v-if="filteredRoutes.length === 0 && searchQuery" class="p-12 text-center">
-        <div
-          class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center shadow-inner">
-          <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-if="filteredRoutes.length === 0 && searchQuery" class="empty-state">
+        <div class="empty-icon">
+          <svg class="empty-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
         </div>
-        <h3 class="text-lg font-semibold text-gray-700 mb-2">No routes found</h3>
-        <p class="text-sm text-gray-500">Try adjusting your search terms</p>
+        <h3 class="empty-title">No routes found</h3>
+        <p class="empty-message">Try adjusting your search terms</p>
       </div>
 
       <!-- Routes Grid -->
-      <div v-else class="p-6 space-y-4">
-        <div v-for="route in filteredRoutes" :key="route.id" class="group relative bg-white/70 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-gray-200/50 
-                    hover:shadow-xl hover:border-gray-300/60 hover:bg-white/90
-                    transition-all duration-300 cursor-pointer transform hover:-translate-y-1 hover:scale-[1.02]
-                    focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2" tabindex="0"
-          role="button" :aria-label="`Route ${route.id}: ${route.name}`" @keydown.enter="$emit('route-selected', route)"
+      <div v-else class="routes-grid">
+        <div v-for="route in filteredRoutes" :key="route.id" class="route-card" tabindex="0" role="button"
+          :aria-label="`Route ${route.id}: ${route.name}`" @keydown.enter="$emit('route-selected', route)"
           @keydown.space.prevent="$emit('route-selected', route)">
 
           <!-- Route Color Accent -->
-          <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" :style="{ backgroundColor: route.color }"></div>
+          <div class="route-accent" :style="{ backgroundColor: route.color }"></div>
 
-          <div class="flex items-start space-x-4">
+          <div class="route-content">
             <!-- Route Info -->
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center space-x-3">
-                  <span class="px-3 py-1.5 rounded-lg text-white font-bold text-sm shadow-md
-                             transform group-hover:scale-105 transition-all duration-300"
-                    :style="{ backgroundColor: route.color }">
+            <div class="route-info">
+              <div class="route-header">
+                <div class="route-badge-container">
+                  <span class="route-badge" :style="{ backgroundColor: route.color }">
                     Route {{ route.id }}
                   </span>
                 </div>
-                <div
-                  class="w-2 h-2 bg-emerald-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                </div>
+                <div class="route-indicator"></div>
               </div>
-              <p class="text-sm text-gray-600 leading-relaxed font-medium">{{ route.name }}</p>
+              <p class="route-name">{{ route.name }}</p>
 
               <!-- Route Status -->
-              <div class="flex items-center space-x-2 mt-3">
-                <div class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></div>
-                <span class="text-xs text-gray-500 font-medium">{{ getRouteStatus() }}</span>
+              <div class="route-status">
+                <div class="status-dot-small"></div>
+                <span class="status-text-small">{{ getRouteStatus() }}</span>
               </div>
             </div>
 
             <!-- Arrow Icon -->
-            <div class="flex-shrink-0">
-              <div class="w-10 h-10 rounded-xl bg-gray-100/80 group-hover:bg-blue-100/80 
-                         flex items-center justify-center transition-all duration-300
-                         group-hover:shadow-md group-hover:scale-110">
-                <ChevronRightIcon class="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+            <div class="route-arrow">
+              <div class="arrow-container">
+                <ChevronRightIcon class="arrow-icon" />
               </div>
             </div>
           </div>
@@ -198,15 +176,15 @@ export default {
     </div>
 
     <!-- Footer -->
-    <div class="border-t border-gray-200/50 p-6 bg-white/60 backdrop-blur-xl">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-          <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-sm shadow-emerald-400/50"></div>
-          <p class="text-sm text-gray-600 font-medium">
-            Data by <span class="text-blue-600 font-semibold">MetroInfo</span>
+    <div class="sidebar-footer">
+      <div class="footer-content">
+        <div class="footer-left">
+          <div class="footer-dot"></div>
+          <p class="footer-text">
+            Data by <span class="footer-highlight">MetroInfo</span>
           </p>
         </div>
-        <div class="text-xs text-gray-400 font-mono">v2.1</div>
+        <div class="footer-version">v2.1</div>
       </div>
     </div>
   </div>
@@ -214,11 +192,31 @@ export default {
 
 <style scoped>
 .sidebar-container {
-  /* Desktop: relative positioning for flex layout */
-  position: relative;
+  height: 100vh;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(24px);
+  border-left: 1px solid rgba(229, 231, 235, 0.5);
+  overflow-y: auto;
+  width: 20rem;
+  transform: translateX(0);
+  transition: all 0.3s ease-in-out;
+  animation: slideIn 0.3s ease-out;
 }
 
-/* Mobile/Tablet: fixed positioning for overlay */
+.sidebar-open {
+  display: block;
+}
+
+.sidebar-closed {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-closed {
+    display: block;
+  }
+}
+
 @media (max-width: 1023px) {
   .sidebar-container {
     position: fixed;
@@ -228,13 +226,474 @@ export default {
   }
 }
 
-/* Enhanced scrollbars moved to global styles */
-
-/* Smooth entrance animations */
-.sidebar-container {
-  animation: slideIn 0.3s ease-out;
+@media (max-width: 768px) {
+  .sidebar-container {
+    width: 18rem;
+  }
 }
 
+@media (max-width: 640px) {
+  .sidebar-container {
+    width: 16rem;
+  }
+}
+
+/* Header Styles */
+.sidebar-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a);
+  color: white;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.header-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+}
+
+.pattern-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.header-content {
+  position: relative;
+  z-index: 10;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-icon {
+  width: 3rem;
+  height: 3rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: white;
+}
+
+.header-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.header-subtitle {
+  color: #cbd5e1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.close-button {
+  padding: 0.625rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.close-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.close-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: white;
+}
+
+.header-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: #10b981;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+}
+
+.status-text {
+  font-size: 0.875rem;
+  color: #cbd5e1;
+  font-weight: 500;
+  margin: 0;
+}
+
+.live-badge {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+/* Search Section */
+.search-section {
+  position: sticky;
+  top: 5.5rem;
+  z-index: 10;
+  padding: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.search-container {
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding-left: 3rem;
+  padding-right: 3rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  border-radius: 1rem;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.3s;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.search-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  background-color: white;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.search-svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #9ca3af;
+  transition: color 0.3s;
+}
+
+.search-container:focus-within .search-svg {
+  color: #3b82f6;
+}
+
+.clear-button {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.clear-btn {
+  padding: 0.25rem;
+  color: #9ca3af;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.clear-btn:hover {
+  color: #4b5563;
+  background-color: #f3f4f6;
+}
+
+.clear-svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Routes List */
+.routes-list {
+  flex: 1;
+  overflow-y: auto;
+  background: linear-gradient(to bottom, rgba(249, 250, 251, 0.5), rgba(255, 255, 255, 0.5));
+}
+
+.empty-state {
+  padding: 3rem;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 5rem;
+  height: 5rem;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(to bottom right, #f3f4f6, #e5e7eb);
+  border-radius: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+}
+
+.empty-svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #9ca3af;
+}
+
+.empty-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.empty-message {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.routes-grid {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.route-card {
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(4px);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  transition: all 0.3s;
+  cursor: pointer;
+  transform: translateY(0) scale(1);
+}
+
+.route-card:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-color: rgba(209, 213, 219, 0.6);
+  background-color: rgba(255, 255, 255, 0.9);
+  transform: translateY(-0.25rem) scale(1.02);
+}
+
+.route-card:focus-within {
+  box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.route-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0.25rem;
+  border-radius: 1rem 0 0 1rem;
+}
+
+.route-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.route-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.route-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.route-badge-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.route-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  color: white;
+  font-weight: bold;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  transform: scale(1);
+  transition: all 0.3s;
+}
+
+.route-card:hover .route-badge {
+  transform: scale(1.05);
+}
+
+.route-indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: #10b981;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.route-card:hover .route-indicator {
+  opacity: 1;
+}
+
+.route-name {
+  font-size: 0.875rem;
+  color: #4b5563;
+  line-height: 1.6;
+  font-weight: 500;
+  margin: 0;
+}
+
+.route-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.status-dot-small {
+  width: 0.375rem;
+  height: 0.375rem;
+  background-color: #10b981;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-text-small {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.route-arrow {
+  flex-shrink: 0;
+}
+
+.arrow-container {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background-color: rgba(243, 244, 246, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.route-card:hover .arrow-container {
+  background-color: rgba(219, 234, 254, 0.8);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.arrow-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #9ca3af;
+  transition: color 0.3s;
+}
+
+.route-card:hover .arrow-icon {
+  color: #2563eb;
+}
+
+/* Footer */
+.sidebar-footer {
+  border-top: 1px solid rgba(229, 231, 235, 0.5);
+  padding: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(24px);
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.footer-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: #10b981;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+}
+
+.footer-text {
+  font-size: 0.875rem;
+  color: #4b5563;
+  font-weight: 500;
+  margin: 0;
+}
+
+.footer-highlight {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.footer-version {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-family: monospace;
+}
+
+/* Animations */
 @keyframes slideIn {
   from {
     transform: translateX(100%);
@@ -247,10 +706,20 @@ export default {
   }
 }
 
-/* Enhanced focus states */
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Focus states */
 input:focus {
   outline: none;
 }
-
-/* Backdrop blur styles moved to global styles */
 </style>

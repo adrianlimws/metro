@@ -1,26 +1,25 @@
 <template>
   <div id="map" :class="mapClasses" role="application" aria-label="Metro transit map">
     <!-- Loading indicator -->
-    <div v-if="isLoading" class="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
-      <div class="flex items-center space-x-2">
-        <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <span class="text-sm font-medium text-gray-700">Loading vehicles...</span>
+    <div v-if="isLoading" class="loading-indicator">
+      <div class="loading-content">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">Loading vehicles...</span>
       </div>
     </div>
 
     <!-- Error indicator -->
-    <div v-if="error"
-      class="absolute top-4 left-4 z-10 bg-red-50 border border-red-200 rounded-lg p-3 shadow-lg max-w-sm">
-      <div class="flex items-start space-x-2">
-        <div class="w-5 h-5 text-red-500 mt-0.5">
+    <div v-if="error" class="error-indicator">
+      <div class="error-content">
+        <div class="error-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </div>
         <div>
-          <p class="text-sm font-medium text-red-800">Error loading vehicles</p>
-          <p class="text-xs text-red-600 mt-1">{{ error }}</p>
+          <p class="error-title">Error loading vehicles</p>
+          <p class="error-message">{{ error }}</p>
         </div>
       </div>
     </div>
@@ -165,5 +164,87 @@ export default {
 #map {
   height: 100vh;
   flex: 1;
+}
+
+.loading-indicator {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+.loading-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.loading-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #3b82f6;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.error-indicator {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  max-width: 24rem;
+}
+
+.error-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.error-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #ef4444;
+  margin-top: 0.125rem;
+}
+
+.error-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #991b1b;
+  margin: 0;
+}
+
+.error-message {
+  font-size: 0.75rem;
+  color: #dc2626;
+  margin: 0.25rem 0 0 0;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
