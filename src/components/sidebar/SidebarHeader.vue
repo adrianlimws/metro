@@ -10,6 +10,10 @@ export default {
         routesCount: {
             type: Number,
             required: true
+        },
+        showCloseButton: {
+            type: Boolean,
+            default: false
         }
     },
     emits: ['toggle-sidebar'],
@@ -50,8 +54,8 @@ export default {
                         <p class="text-slate-300 text-sm font-medium m-0">Metro Transit</p>
                     </div>
                 </div>
-                <button
-                    class="p-2.5 bg-white/10 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20 hover:bg-white/10"
+                <button v-if="showCloseButton"
+                    class="p-2.5 bg-white/10 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20 hover:bg-white/20"
                     @click="handleToggleSidebar">
                     <XMarkIcon class="w-5 h-5 text-white" />
                 </button>

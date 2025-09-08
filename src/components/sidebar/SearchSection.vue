@@ -27,7 +27,7 @@ export default {
 
 <template>
     <div
-        class="sticky top-[5.5rem] z-10 p-6 bg-white/60 backdrop-blur-xl border-b border-gray-200/50 overflow-hidden box-border">
+        class="sticky top-[8.5rem] z-10 p-6 bg-white/60 backdrop-blur-xl border-b border-gray-200/50 overflow-hidden box-border">
         <div class="relative box-border w-full">
             <input :value="searchQuery" @input="handleInput" type="text" placeholder="Search routes..."
                 class="w-full pl-12 pr-12 py-4 border border-gray-200/60 rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm transition-all duration-300 text-sm font-medium text-gray-700 box-border max-w-full focus:outline-none focus:shadow-[0_0_0_2px_rgba(59,130,246,0.2)] focus:border-blue-500/50 focus:shadow-lg focus:bg-white">

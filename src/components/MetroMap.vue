@@ -200,7 +200,7 @@ export default {
         })
 
         const mapClasses = computed(() => {
-            return 'flex-1'
+            return 'flex-1 pb-20 lg:pb-0'
         })
 
         return {

@@ -2,22 +2,16 @@
     <div id="app" class="h-screen w-full m-0 p-0">
         <div class="flex h-full">
             <MetroMap ref="metroMap" :sidebar-open="sidebarOpen" @data-fetched="resetCountdown" />
+            <!-- Desktop Sidebar -->
             <RouteSidebar ref="sidebar" :countdown-seconds="countdownSeconds"
                 :countdown-percentage="countdownPercentage" :is-loading="isLoading" :error="error"
                 @sidebar-toggle="handleSidebarToggle" />
         </div>
 
-        <!-- Mobile backdrop -->
-        <div v-if="sidebarOpen && !isDesktop" class="fixed inset-0 bg-black/30 z-40 lg:hidden" @click="toggleSidebar"
-            aria-hidden="true">
-        </div>
+        <!-- Mobile/Tablet Bottom Navigation -->
+        <BottomNavigation :countdown-seconds="countdownSeconds" :countdown-percentage="countdownPercentage"
+            :is-loading="isLoading" :error="error" @route-selected="handleRouteSelected" />
 
-        <!-- Mobile menu button -->
-        <button v-if="!isDesktop"
-            class="fixed top-4 right-4 z-60 bg-white p-3 rounded-xl shadow-lg border border-gray-200 transition-all duration-200 hover:bg-gray-50 hover:shadow-xl hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 lg:hidden"
-            @click="toggleSidebar" :aria-label="sidebarOpen ? 'Close sidebar' : 'Open sidebar'">
-            <Bars3Icon class="w-6 h-6 text-gray-600" />
-        </button>
     </div>
 </template>
 
@@ -25,8 +19,8 @@
 import { ref, watch, computed, onUnmounted } from 'vue'
 import MetroMap from './components/MetroMap.vue'
 import RouteSidebar from './components/RouteSidebar.vue'
+import BottomNavigation from './components/BottomNavigation.vue'
 import { Bars3Icon } from '@heroicons/vue/24/outline'
-import { useScreenSize } from './composables/useScreenSize'
 import { MAP_CONFIG } from './constants'
 
 export default {
@@ -34,11 +28,11 @@ export default {
     components: {
         MetroMap,
         RouteSidebar,
+        BottomNavigation,
         Bars3Icon
     },
     setup() {
-        const sidebarOpen = ref(false)
-        const { isDesktop } = useScreenSize()
+        const sidebarOpen = ref(true) // Always open on desktop, controlled by CSS
 
         // Countdown timer data
         const countdownSeconds = ref(0)
@@ -47,20 +41,18 @@ export default {
         const countdownInterval = ref(null)
         const metroMap = ref(null)
 
-        // Watch for screen size changes and adjust sidebar state
-        watch(isDesktop, (newIsDesktop) => {
-            sidebarOpen.value = newIsDesktop
-        }, { immediate: true })
-
         const toggleSidebar = () => {
-            // Only toggle on mobile/tablet screens
-            if (!isDesktop.value) {
-                sidebarOpen.value = !sidebarOpen.value
-            }
+            sidebarOpen.value = !sidebarOpen.value
         }
 
         const handleSidebarToggle = (isOpen) => {
             sidebarOpen.value = isOpen
+        }
+
+        const handleRouteSelected = (route) => {
+            // Handle route selection from bottom navigation
+            // You can add route selection logic here if needed
+            console.log('Route selected:', route)
         }
 
         // Countdown functions
@@ -113,9 +105,9 @@ export default {
 
         return {
             sidebarOpen,
-            isDesktop,
             toggleSidebar,
             handleSidebarToggle,
+            handleRouteSelected,
             countdownSeconds,
             countdownPercentage,
             isLoading: isLoadingFromMap,

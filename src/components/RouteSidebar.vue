@@ -1,7 +1,6 @@
 <script>
 import { ref, computed, watch } from 'vue'
 import { busRoutes, searchRoutes } from '../data/busRoutes.js'
-import { useScreenSize } from '../composables/useScreenSize'
 import { useSearch } from '../composables/useSearch'
 import { ROUTE_STATUS, MAP_CONFIG } from '../constants'
 import {
@@ -42,7 +41,6 @@ export default {
     emits: ['sidebar-toggle', 'route-selected'],
     setup(props, { emit }) {
         const routes = ref(busRoutes || [])
-        const { isDesktop } = useScreenSize()
 
         // Use search composable with debouncing
         const { searchQuery, filteredItems: filteredRoutes, clearSearch } = useSearch(
@@ -51,19 +49,10 @@ export default {
             300
         )
 
-        const isOpen = computed(() => isDesktop.value)
-
-        // Watch for screen size changes and emit sidebar state
-        watch(isDesktop, (newIsDesktop) => {
-            emit('sidebar-toggle', newIsDesktop)
-        }, { immediate: true })
-
         // Methods
         const toggleSidebar = () => {
-            // Only toggle on mobile/tablet screens
-            if (!isDesktop.value) {
-                emit('sidebar-toggle', !isOpen.value)
-            }
+            // Desktop sidebar doesn't need toggle functionality
+            // This is kept for compatibility with SidebarHeader component
         }
 
         const handleSearchUpdate = (newQuery) => {
@@ -78,7 +67,6 @@ export default {
             routes,
             searchQuery,
             filteredRoutes,
-            isOpen,
             toggleSidebar,
             clearSearch,
             handleSearchUpdate,
@@ -93,8 +81,8 @@ export default {
 </script>
 
 <template>
-    <div class="h-screen bg-white/80 backdrop-blur-xl border-l border-gray-200/50 overflow-y-auto overflow-x-hidden w-64 sm:w-72 lg:w-80 transform translate-x-0 box-border min-h-screen shadow-[-8px_0_32px_rgba(0,0,0,0.04)] fixed lg:relative top-0 right-0 z-50 lg:z-auto"
-        :class="isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+    <div
+        class="hidden lg:block h-screen bg-white/80 backdrop-blur-xl border-l border-gray-200/50 overflow-y-auto overflow-x-hidden w-80 box-border min-h-screen shadow-[-8px_0_32px_rgba(0,0,0,0.04)] relative">
 
         <!-- Header -->
         <SidebarHeader :routes-count="routes.length" @toggle-sidebar="toggleSidebar" />
