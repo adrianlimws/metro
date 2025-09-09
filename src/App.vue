@@ -1,5 +1,5 @@
 <template>
-    <div id="app" class="h-screen w-full m-0 p-0">
+    <div id="app" class="h-screen w-full m-0 p-0 overflow-hidden">
         <div class="flex h-full">
             <MetroMap ref="metroMap" :sidebar-open="sidebarOpen" @data-fetched="resetCountdown" />
             <!-- Desktop Sidebar -->
