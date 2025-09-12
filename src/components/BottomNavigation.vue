@@ -1,8 +1,6 @@
 <script>
-import { ref, computed, watch } from 'vue'
-import { busRoutes, searchRoutes } from '../data/busRoutes.js'
-import { useSearch } from '../composables/useSearch'
-import { ROUTE_STATUS, MAP_CONFIG } from '../constants'
+import { ref } from 'vue'
+import { busRoutes } from '../data/busRoutes.js'
 import { RefreshCountdown } from './sidebar'
 
 export default {
@@ -30,47 +28,26 @@ export default {
     },
     emits: ['route-selected'],
     setup(props, { emit }) {
-        const routes = ref(busRoutes || [])
         const selectedRoute = ref('')
 
-        // Use search composable with debouncing
-        const { searchQuery, filteredItems: filteredRoutes, clearSearch } = useSearch(
-            routes,
-            searchRoutes,
-            300
-        )
-
-        // Methods
+        // Handle route selection from dropdown
         const handleRouteChange = () => {
             if (selectedRoute.value) {
-                const route = routes.value.find(r => r.id === selectedRoute.value)
+                const route = busRoutes.find(r => r.id === selectedRoute.value)
                 if (route) {
                     emit('route-selected', route)
                 }
             }
         }
 
-        const handleSearchUpdate = (newQuery) => {
-            searchQuery.value = newQuery
-        }
-
-        const handleRouteSelected = (route) => {
-            emit('route-selected', route)
-        }
-
         return {
-            routes,
-            searchQuery,
-            filteredRoutes,
+            routes: busRoutes,
             selectedRoute,
-            clearSearch,
-            handleSearchUpdate,
-            handleRouteSelected,
             handleRouteChange,
-            countdownSeconds: computed(() => props.countdownSeconds),
-            countdownPercentage: computed(() => props.countdownPercentage),
-            isLoading: computed(() => props.isLoading),
-            error: computed(() => props.error)
+            countdownSeconds: props.countdownSeconds,
+            countdownPercentage: props.countdownPercentage,
+            isLoading: props.isLoading,
+            error: props.error
         }
     }
 }
@@ -78,7 +55,8 @@ export default {
 
 <template>
     <!-- Bottom Navigation Container -->
-    <div class="fixed bottom-0 left-0 right-0 z-[9999] block lg:hidden" style="transform: translateZ(0);">
+    <div class="fixed bottom-0 left-0 right-0 z-[9999] block lg:hidden"
+        style="transform: translateZ(0); touch-action: manipulation;">
 
         <!-- Refresh countdown bar - always visible above bottom bar -->
         <div class="bg-white/95 backdrop-blur-xl border-t border-gray-200/50">
@@ -113,7 +91,8 @@ export default {
                 <!-- Bottom row: Route selector -->
                 <div>
                     <select v-model="selectedRoute" @change="handleRouteChange"
-                        class="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        class="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        style="touch-action: manipulation; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
                         <option value="">Choose a route...</option>
                         <option v-for="route in routes" :key="route.id" :value="route.id">
                             {{ route.name }} ({{ route.id }})

@@ -1,0 +1,791 @@
+# Metro Vue.js Project - Cursor Rules
+
+## Project Overview
+
+This is a Vue.js 3 metro tracking application using Vite, Tailwind CSS, Netlify Functions, and Leaflet for real-time vehicle position mapping. The project displays live transit data on an interactive map with responsive design.
+
+## Tech Stack
+
+- **Frontend**: Vue.js 3 (Composition API), Vite, Tailwind CSS
+- **Backend**: Netlify Functions, Cloudflare Workers
+- **Storage**: Cloudflare KV Storage
+- **Maps**: Leaflet
+- **Icons**: Heroicons
+- **Deployment**: Netlify, Cloudflare
+
+## Core Principles
+
+### 1. Vue.js Best Practices
+
+- **Composition API**: Always use Composition API with `<script setup>` syntax
+- **Reactivity**: Use `ref()` for primitives, `reactive()` for objects
+- **Composables**: Extract reusable logic into composables in `/src/composables/`
+- **Component Structure**: Single File Components with clear separation of template, script, and style
+- **Props Validation**: Use TypeScript-style prop definitions or runtime validation
+- **Event Handling**: Use descriptive event names and emit events with clear data structure
+
+### 2. Code Style Rules
+
+- **Utilize Early Returns**: Use early returns to avoid nested conditions
+- **Conditional Classes**: Prefer conditional classes over ternary operators for class attributes
+- **Descriptive Names**: Use descriptive names for variables and functions. Prefix event handler functions with "handle" (e.g., handleClick, handleKeyDown)
+- **Constants Over Functions**: Use constants instead of functions where possible. Define types if applicable
+- **Correct and DRY Code**: Focus on writing correct, best practice, DRY code
+- **Functional and Immutable Style**: Prefer a functional, immutable style unless it becomes much more verbose
+- **Minimal Code Changes**: Only modify sections of the code related to the task at hand
+
+### 3. Comments and Documentation
+
+- **Function Comments**: Add a comment at the start of each function describing what it does
+- **JSDoc Comments**: Use JSDoc comments for JavaScript functions and modern ES6 syntax
+- **Component Documentation**: Document props, events, and slots in component headers
+
+### 4. File Structure Guidelines
+
+```
+src/
+├── components/           # Vue components
+│   ├── sidebar/         # Sidebar-related components
+│   └── *.vue           # Main components
+├── composables/         # Reusable composition functions
+├── constants/           # Application constants
+├── data/               # Static data files
+├── styles/             # Global styles
+└── utils/              # Utility functions
+```
+
+## Cloudflare Workers Best Practices
+
+### 1. Worker Structure and Organization
+
+- **Single Responsibility**: Each worker should have a single, well-defined purpose
+- **Environment Variables**: Use environment variables for configuration and secrets
+- **Error Handling**: Implement comprehensive error handling with proper HTTP status codes
+- **Request Validation**: Validate all incoming requests and sanitize inputs
+- **Response Headers**: Set appropriate CORS and security headers
+
+### 2. Performance Optimization
+
+- **Minimal Dependencies**: Keep worker bundle size small by avoiding heavy dependencies
+- **Edge Computing**: Leverage Cloudflare's global edge network for low latency
+- **Caching Strategy**: Implement appropriate caching headers and strategies
+- **Request Deduplication**: Use request deduplication for expensive operations
+- **Streaming Responses**: Use streaming for large responses when possible
+
+### 3. Worker Code Examples
+
+```javascript
+// Basic worker structure
+export default {
+  async fetch(request, env, ctx) {
+    try {
+      // Validate request method
+      if (request.method !== "GET") {
+        return new Response("Method not allowed", { status: 405 });
+      }
+
+      // Parse URL and validate parameters
+      const url = new URL(request.url);
+      const route = url.pathname;
+
+      // Route handling
+      switch (route) {
+        case "/api/vehicles":
+          return await handleVehiclesRequest(env);
+        case "/api/routes":
+          return await handleRoutesRequest(env);
+        default:
+          return new Response("Not found", { status: 404 });
+      }
+    } catch (error) {
+      console.error("Worker error:", error);
+      return new Response("Internal server error", { status: 500 });
+    }
+  },
+};
+
+// Handler function example
+async function handleVehiclesRequest(env) {
+  const data = await env.METRO_KV.get("vehicles", "json");
+
+  if (!data) {
+    return new Response("No data available", { status: 404 });
+  }
+
+  return new Response(JSON.stringify(data), {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=30",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
+}
+```
+
+### 4. Error Handling Patterns
+
+```javascript
+// Comprehensive error handling
+const handleError = (error, context) => {
+  console.error(`Error in ${context}:`, error);
+
+  // Return appropriate HTTP status based on error type
+  if (error.name === "TypeError") {
+    return new Response("Bad request", { status: 400 });
+  }
+
+  if (error.message.includes("timeout")) {
+    return new Response("Request timeout", { status: 408 });
+  }
+
+  return new Response("Internal server error", { status: 500 });
+};
+
+// Usage in worker
+try {
+  const result = await someAsyncOperation();
+  return new Response(JSON.stringify(result));
+} catch (error) {
+  return handleError(error, "someAsyncOperation");
+}
+```
+
+## Cloudflare KV Storage Best Practices
+
+### 1. Data Organization and Naming
+
+- **Hierarchical Keys**: Use hierarchical key structures (e.g., `user:123:profile`, `route:456:stops`)
+- **Consistent Naming**: Use consistent naming conventions across all keys
+- **Key Prefixes**: Use prefixes to group related data (e.g., `cache:`, `config:`, `user:`)
+- **Versioning**: Include version numbers in keys for schema evolution (e.g., `v1:vehicles`)
+
+### 2. Data Serialization and Types
+
+- **JSON Storage**: Use JSON for structured data with proper serialization/deserialization
+- **Metadata**: Store metadata alongside data for cache invalidation and TTL management
+- **Type Safety**: Define clear data structures and validate on read/write
+- **Compression**: Consider compression for large data sets
+
+### 3. KV Operations Examples
+
+```javascript
+// KV operations with proper error handling
+class KVService {
+  constructor(env) {
+    this.kv = env.METRO_KV;
+  }
+
+  // Get data with fallback and error handling
+  async get(key, options = {}) {
+    try {
+      const result = await this.kv.get(key, options);
+
+      if (!result) {
+        return options.defaultValue || null;
+      }
+
+      return options.type === "json" ? JSON.parse(result) : result;
+    } catch (error) {
+      console.error(`KV GET error for key ${key}:`, error);
+      throw new Error(`Failed to retrieve data for key: ${key}`);
+    }
+  }
+
+  // Set data with metadata and TTL
+  async set(key, value, options = {}) {
+    try {
+      const serializedValue =
+        typeof value === "string" ? value : JSON.stringify(value);
+
+      const kvOptions = {
+        expirationTtl: options.ttl || 3600, // Default 1 hour
+        metadata: {
+          timestamp: Date.now(),
+          version: options.version || "1.0",
+          ...options.metadata,
+        },
+      };
+
+      await this.kv.put(key, serializedValue, kvOptions);
+      return true;
+    } catch (error) {
+      console.error(`KV PUT error for key ${key}:`, error);
+      throw new Error(`Failed to store data for key: ${key}`);
+    }
+  }
+
+  // Batch operations for efficiency
+  async getMultiple(keys) {
+    try {
+      const promises = keys.map((key) => this.get(key));
+      const results = await Promise.all(promises);
+
+      return keys.reduce((acc, key, index) => {
+        acc[key] = results[index];
+        return acc;
+      }, {});
+    } catch (error) {
+      console.error("KV batch GET error:", error);
+      throw new Error("Failed to retrieve multiple keys");
+    }
+  }
+
+  // Delete with pattern matching
+  async deletePattern(pattern) {
+    try {
+      const keys = await this.kv.list({ prefix: pattern });
+      const deletePromises = keys.keys.map((key) => this.kv.delete(key.name));
+      await Promise.all(deletePromises);
+      return keys.keys.length;
+    } catch (error) {
+      console.error(`KV DELETE pattern error for ${pattern}:`, error);
+      throw new Error(`Failed to delete keys matching pattern: ${pattern}`);
+    }
+  }
+}
+```
+
+### 4. Caching Strategies
+
+```javascript
+// Cache management utilities
+class CacheManager {
+  constructor(kvService) {
+    this.kv = kvService;
+    this.defaultTTL = 300; // 5 minutes
+  }
+
+  // Get with cache fallback
+  async getWithCache(key, fetcher, ttl = this.defaultTTL) {
+    try {
+      // Try to get from cache first
+      const cached = await this.kv.get(key, { type: "json" });
+
+      if (cached && !this.isExpired(cached)) {
+        return cached.data;
+      }
+
+      // Fetch fresh data
+      const freshData = await fetcher();
+
+      // Cache the fresh data
+      await this.kv.set(
+        key,
+        {
+          data: freshData,
+          timestamp: Date.now(),
+          ttl: ttl,
+        },
+        { ttl }
+      );
+
+      return freshData;
+    } catch (error) {
+      console.error(`Cache error for key ${key}:`, error);
+      // Fallback to direct fetch
+      return await fetcher();
+    }
+  }
+
+  // Check if cached data is expired
+  isExpired(cachedData) {
+    if (!cachedData.timestamp || !cachedData.ttl) {
+      return true;
+    }
+
+    const age = Date.now() - cachedData.timestamp;
+    return age > cachedData.ttl * 1000;
+  }
+
+  // Invalidate cache
+  async invalidate(pattern) {
+    try {
+      const deletedCount = await this.kv.deletePattern(pattern);
+      console.log(
+        `Invalidated ${deletedCount} cache entries for pattern: ${pattern}`
+      );
+      return deletedCount;
+    } catch (error) {
+      console.error(`Cache invalidation error for pattern ${pattern}:`, error);
+      throw error;
+    }
+  }
+}
+```
+
+### 5. Data Consistency and Reliability
+
+- **Atomic Operations**: Use atomic operations where possible
+- **Retry Logic**: Implement retry logic for transient failures
+- **Circuit Breaker**: Use circuit breaker pattern for external API calls
+- **Monitoring**: Implement proper logging and monitoring
+- **Backup Strategy**: Consider backup strategies for critical data
+
+### 6. Security Best Practices
+
+- **Input Validation**: Validate all inputs before storing in KV
+- **Access Control**: Use appropriate access controls and authentication
+- **Data Encryption**: Consider encryption for sensitive data
+- **Rate Limiting**: Implement rate limiting for KV operations
+- **Audit Logging**: Log all KV operations for security auditing
+
+### 7. Performance Optimization
+
+- **Batch Operations**: Use batch operations when possible
+- **Connection Pooling**: Reuse connections efficiently
+- **Lazy Loading**: Load data only when needed
+- **Pagination**: Implement pagination for large datasets
+- **Indexing**: Use appropriate key structures for efficient queries
+
+## Code Style Examples
+
+### Vue Components
+
+```vue
+<template>
+  <!-- Use semantic HTML elements -->
+  <div class="component-wrapper">
+    <!-- Conditional rendering with v-if/v-show -->
+    <div v-if="isVisible" class="content">
+      <!-- Event handlers with descriptive names -->
+      <button @click="handleButtonClick" class="btn-primary">Click me</button>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from "vue";
+import { useSomeComposable } from "@/composables/useSomeComposable";
+
+// Props with validation
+const props = defineProps({
+  title: {
+    type: String,
+    required: true,
+  },
+  isVisible: {
+    type: Boolean,
+    default: false,
+  },
+});
+
+// Emits
+const emit = defineEmits(["update:isVisible", "button-clicked"]);
+
+// Reactive data
+const isLoading = ref(false);
+const error = ref(null);
+
+// Computed properties
+const displayTitle = computed(() => props.title.toUpperCase());
+
+// Methods
+const handleButtonClick = () => {
+  emit("button-clicked", { timestamp: Date.now() });
+};
+
+// Lifecycle
+onMounted(() => {
+  // Initialization logic
+});
+</script>
+
+<style scoped>
+/* Use scoped styles when necessary */
+.component-wrapper {
+  @apply flex flex-col gap-4;
+}
+</style>
+```
+
+### Composables
+
+```javascript
+// useApiData.js
+import { ref, computed } from "vue";
+import { API_CONFIG } from "@/constants";
+
+export function useApiData(endpoint) {
+  const data = ref([]);
+  const isLoading = ref(false);
+  const error = ref(null);
+
+  const fetchData = async () => {
+    try {
+      isLoading.value = true;
+      error.value = null;
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`);
+      if (!response.ok) throw new Error("Failed to fetch data");
+
+      data.value = await response.json();
+    } catch (err) {
+      error.value = err.message;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const isEmpty = computed(() => data.value.length === 0);
+
+  return {
+    data,
+    isLoading,
+    error,
+    fetchData,
+    isEmpty,
+  };
+}
+```
+
+### Constants and Configuration
+
+```javascript
+// constants/index.js
+export const API_CONFIG = {
+  VEHICLES_ENDPOINT: "/.netlify/functions/vehicles",
+  METRO_API_URL:
+    "https://apis.metroinfo.co.nz/rti/gtfsrt/v1/vehicle-positions.pb",
+};
+
+export const MAP_CONFIG = {
+  DEFAULT_CENTER: [-43.5321, 172.6362],
+  DEFAULT_ZOOM: 12,
+  REFRESH_INTERVAL: 30000,
+};
+
+export const ERROR_MESSAGES = {
+  VEHICLES_FETCH_FAILED: "Failed to fetch vehicle data",
+  NETWORK_ERROR: "Network error occurred",
+};
+
+// Cloudflare-specific constants
+export const CLOUDFLARE_CONFIG = {
+  KV_NAMESPACE: "METRO_KV",
+  CACHE_TTL: 300, // 5 minutes
+  MAX_RETRIES: 3,
+  RETRY_DELAY: 1000, // 1 second
+};
+
+export const KV_KEYS = {
+  VEHICLES: "vehicles:current",
+  ROUTES: "routes:all",
+  CACHE_PREFIX: "cache:",
+  CONFIG_PREFIX: "config:",
+};
+```
+
+## Performance Guidelines
+
+### 1. Vue.js Performance
+
+- Use `v-memo` for expensive list rendering
+- Implement `shallowRef` for large objects that don't need deep reactivity
+- Use `defineAsyncComponent` for code splitting
+- Implement proper cleanup in `onUnmounted`
+
+### 2. API Performance
+
+- Implement request deduplication
+- Use appropriate caching strategies
+- Implement error handling with retry logic
+- Use debouncing for search inputs
+
+### 3. Bundle Optimization
+
+- Use dynamic imports for route-based code splitting
+- Optimize images with appropriate formats
+- Implement tree shaking for unused code elimination
+
+### 4. Cloudflare Workers Performance
+
+- Minimize worker bundle size
+- Use streaming responses for large data
+- Implement proper caching headers
+- Leverage edge computing capabilities
+
+## Error Handling
+
+### 1. API Errors
+
+```javascript
+const handleApiError = (error, context) => {
+  console.error(`API Error in ${context}:`, error);
+
+  // User-friendly error messages
+  const userMessage =
+    error.status === 429
+      ? "Too many requests. Please wait a moment."
+      : "Something went wrong. Please try again.";
+
+  return userMessage;
+};
+```
+
+### 2. Component Error Boundaries
+
+```vue
+<template>
+  <div v-if="hasError" class="error-boundary">
+    <h3>Something went wrong</h3>
+    <p>{{ errorMessage }}</p>
+    <button @click="retry">Try Again</button>
+  </div>
+  <slot v-else />
+</template>
+```
+
+### 3. Cloudflare Workers Error Handling
+
+```javascript
+// Global error handler for workers
+const handleWorkerError = (error, request) => {
+  console.error("Worker error:", {
+    error: error.message,
+    stack: error.stack,
+    url: request.url,
+    method: request.method,
+    timestamp: new Date().toISOString(),
+  });
+
+  // Return appropriate response based on error type
+  if (error.name === "TypeError") {
+    return new Response("Bad Request", { status: 400 });
+  }
+
+  if (error.message.includes("KV")) {
+    return new Response("Storage Error", { status: 503 });
+  }
+
+  return new Response("Internal Server Error", { status: 500 });
+};
+```
+
+## Testing Guidelines
+
+### 1. Unit Tests
+
+- Test composables in isolation
+- Mock API calls and external dependencies
+- Test error scenarios and edge cases
+
+### 2. Component Tests
+
+- Test user interactions and event emissions
+- Test conditional rendering
+- Test accessibility features
+
+### 3. Worker Tests
+
+- Test worker functions with mock requests
+- Test KV operations with mock data
+- Test error handling scenarios
+- Test caching behavior
+
+## Security Guidelines
+
+### 1. API Security
+
+- Never expose API keys in client-side code
+- Use Netlify Functions or Cloudflare Workers for API proxying
+- Implement proper CORS headers
+- Validate and sanitize all inputs
+
+### 2. Content Security Policy
+
+```html
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'self'; 
+               script-src 'self' 'unsafe-inline'; 
+               style-src 'self' 'unsafe-inline';
+               img-src 'self' data: https:;"
+/>
+```
+
+### 3. Cloudflare Security
+
+- Use environment variables for sensitive data
+- Implement proper authentication and authorization
+- Use Cloudflare's security features (DDoS protection, WAF)
+- Monitor and log security events
+
+## Accessibility Guidelines
+
+### 1. Semantic HTML
+
+- Use proper heading hierarchy (h1, h2, h3)
+- Use semantic elements (nav, main, section, article)
+- Implement proper ARIA labels and roles
+
+### 2. Keyboard Navigation
+
+- Ensure all interactive elements are keyboard accessible
+- Implement proper focus management
+- Use appropriate tabindex values
+
+### 3. Screen Reader Support
+
+- Provide meaningful alt text for images
+- Use descriptive link text
+- Implement proper form labels
+
+## Deployment Guidelines
+
+### 1. Netlify Configuration
+
+```toml
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+```
+
+### 2. Cloudflare Workers Configuration
+
+```toml
+# wrangler.toml
+name = "metro-api"
+main = "src/worker.js"
+compatibility_date = "2023-10-30"
+
+[vars]
+ENVIRONMENT = "production"
+
+[[kv_namespaces]]
+binding = "METRO_KV"
+id = "your-kv-namespace-id"
+preview_id = "your-preview-kv-namespace-id"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+```
+
+### 3. Environment Variables
+
+- Use environment variables for configuration
+- Never commit sensitive data to version control
+- Use `.env.example` for documentation
+
+## Code Quality Rules
+
+### 1. ESLint Configuration
+
+- Use Vue 3 recommended rules
+- Enforce consistent code style
+- Prevent common mistakes
+
+### 2. Prettier Configuration
+
+- Consistent formatting
+- Automatic code formatting on save
+- Integration with ESLint
+
+### 3. Git Hooks
+
+- Pre-commit hooks for linting and formatting
+- Pre-push hooks for testing
+- Commit message conventions
+
+## Common Patterns
+
+### 1. Loading States
+
+```vue
+<template>
+  <div v-if="isLoading" class="loading-skeleton">
+    <div class="animate-pulse bg-gray-200 h-4 w-full rounded"></div>
+  </div>
+  <div v-else-if="error" class="error-state">
+    <p class="text-red-500">{{ error }}</p>
+  </div>
+  <div v-else class="content">
+    <!-- Actual content -->
+  </div>
+</template>
+```
+
+### 2. Responsive Design
+
+```vue
+<template>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <!-- Responsive grid -->
+  </div>
+</template>
+```
+
+### 3. State Management
+
+```javascript
+// For complex state, consider Pinia
+import { defineStore } from "pinia";
+
+export const useAppStore = defineStore("app", () => {
+  const sidebarOpen = ref(false);
+  const currentRoute = ref(null);
+
+  const toggleSidebar = () => {
+    sidebarOpen.value = !sidebarOpen.value;
+  };
+
+  return {
+    sidebarOpen,
+    currentRoute,
+    toggleSidebar,
+  };
+});
+```
+
+### 4. Cloudflare Workers Patterns
+
+```javascript
+// Request routing pattern
+const routes = {
+  "GET /api/vehicles": handleGetVehicles,
+  "POST /api/vehicles": handlePostVehicles,
+  "GET /api/routes": handleGetRoutes,
+};
+
+const handleRequest = async (request, env) => {
+  const url = new URL(request.url);
+  const method = request.method;
+  const route = `${method} ${url.pathname}`;
+
+  const handler = routes[route];
+  if (!handler) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  return await handler(request, env);
+};
+```
+
+## Remember
+
+- Keep components small and focused
+- Use composables for shared logic
+- Implement proper error handling
+- Follow accessibility guidelines
+- Optimize for performance
+- Write maintainable and testable code
+- Use Netlify Functions or Cloudflare Workers for API handling
+- Follow Tailwind CSS best practices
+- Leverage Cloudflare's edge computing capabilities
+- Implement proper caching strategies with KV storage
+- Monitor and log all operations for debugging and security

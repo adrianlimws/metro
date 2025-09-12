@@ -20,7 +20,6 @@ import { ref, watch, computed, onUnmounted } from 'vue'
 import MetroMap from './components/MetroMap.vue'
 import RouteSidebar from './components/RouteSidebar.vue'
 import BottomNavigation from './components/BottomNavigation.vue'
-import { Bars3Icon } from '@heroicons/vue/24/outline'
 import { MAP_CONFIG } from './constants'
 
 export default {
@@ -28,8 +27,7 @@ export default {
     components: {
         MetroMap,
         RouteSidebar,
-        BottomNavigation,
-        Bars3Icon
+        BottomNavigation
     },
     setup() {
         const sidebarOpen = ref(true) // Always open on desktop, controlled by CSS
@@ -64,11 +62,11 @@ export default {
             countdownSeconds.value = MAP_CONFIG.REFRESH_INTERVAL / 1000
 
             countdownInterval.value = setInterval(() => {
-                countdownSeconds.value -= 0.1
+                countdownSeconds.value -= 1
                 if (countdownSeconds.value <= 0) {
                     countdownSeconds.value = MAP_CONFIG.REFRESH_INTERVAL / 1000
                 }
-            }, 100)
+            }, 1000) // Update every second instead of every 100ms
         }
 
         const resetCountdown = () => {

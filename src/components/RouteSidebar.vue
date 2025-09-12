@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { busRoutes, searchRoutes } from '../data/busRoutes.js'
 import { useSearch } from '../composables/useSearch'
-import { ROUTE_STATUS, MAP_CONFIG } from '../constants'
+import { MAP_CONFIG } from '../constants'
 import {
     SidebarHeader,
     RefreshCountdown,

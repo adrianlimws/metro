@@ -45,31 +45,6 @@ export const getRouteById = (id) => {
 }
 
 /**
- * Get all routes with a specific color
- * @param {string} color - Color hex code
- * @returns {Array} Array of routes with the specified color
- */
-export const getRoutesByColor = (color) => {
-  return busRoutes.filter(route => route.color === color)
-}
-
-/**
- * Get all route IDs
- * @returns {Array} Array of route IDs
- */
-export const getAllRouteIds = () => {
-  return busRoutes.map(route => route.id)
-}
-
-/**
- * Get all unique colors used by routes
- * @returns {Array} Array of unique color hex codes
- */
-export const getAllColors = () => {
-  return [...new Set(busRoutes.map(route => route.color))]
-}
-
-/**
  * Search routes by name or ID
  * @param {string} query - Search query
  * @returns {Array} Array of matching routes
