@@ -41,15 +41,16 @@
         <!-- Timeline -->
         <div v-else-if="hasStops" class="relative">
             <!-- Timeline line -->
-            <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-pink-400 to-pink-300"></div>
+            <div class="absolute left-8 top-0 bottom-0 w-0.5"
+                :style="{ background: `linear-gradient(to bottom, ${routeColor}, ${routeColor}80)` }"></div>
 
             <!-- Stops list -->
             <div class="space-y-1 pb-4">
                 <div v-for="(stop, index) in routeStops" :key="stop.stop_id || stop.id || index"
                     class="relative flex items-start gap-4 px-4 py-3 hover:bg-gray-50/50 transition-colors">
                     <!-- Timeline dot -->
-                    <div
-                        class="relative z-10 flex-shrink-0 w-4 h-4 bg-white border-2 border-pink-400 rounded-full mt-1">
+                    <div class="relative z-10 flex-shrink-0 w-4 h-4 bg-white border-2 rounded-full mt-1"
+                        :style="{ borderColor: routeColor }">
                     </div>
 
                     <!-- Stop content -->
@@ -60,7 +61,7 @@
                         </h3>
 
                         <!-- Stop ID and additional info -->
-                        <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <div class="flex items-center gap-2 text-xs text-gray-500 mb-1">
                             <span class="bg-gray-100 px-2 py-1 rounded font-mono">
                                 ID: {{ stop.stop_id || stop.id || 'N/A' }}
                             </span>
@@ -68,12 +69,37 @@
                                 class="bg-gray-100 px-2 py-1 rounded">
                                 Code: {{ stop.stop_code }}
                             </span>
+                            <span v-if="stop.trip_id" class="bg-blue-100 px-2 py-1 rounded text-blue-700">
+                                Trip: {{ stop.trip_id }}
+                            </span>
+                        </div>
+
+                        <!-- Time information -->
+                        <div v-if="stop.arrival_time || stop.departure_time"
+                            class="flex items-center gap-2 text-xs text-gray-600 mb-1">
+                            <span v-if="stop.arrival_time" class="bg-green-100 px-2 py-1 rounded">
+                                Arr: {{ stop.arrival_time }}
+                            </span>
+                            <span v-if="stop.departure_time" class="bg-orange-100 px-2 py-1 rounded">
+                                Dep: {{ stop.departure_time }}
+                            </span>
                         </div>
 
                         <!-- Stop description if available -->
-                        <p v-if="stop.stop_desc && stop.stop_desc !== 'null'" class="text-xs text-gray-600 mt-1">
+                        <p v-if="stop.stop_desc && stop.stop_desc !== 'null' && stop.stop_desc.trim()"
+                            class="text-xs text-gray-600 mt-1">
                             {{ stop.stop_desc }}
                         </p>
+
+                        <!-- Coordinates and accessibility info -->
+                        <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                            <span v-if="stop.stop_lat && stop.stop_lon">
+                                📍 {{ stop.stop_lat.toFixed(4) }}, {{ stop.stop_lon.toFixed(4) }}
+                            </span>
+                            <span v-if="stop.wheelchair_boarding !== undefined" class="flex items-center gap-1">
+                                {{ stop.wheelchair_boarding === 1 ? '♿' : '🚫' }}
+                            </span>
+                        </div>
                     </div>
 
                     <!-- Sequence number -->
@@ -125,6 +151,10 @@ defineProps({
     hasStops: {
         type: Boolean,
         default: false
+    },
+    routeColor: {
+        type: String,
+        default: '#88807E'
     }
 })
 

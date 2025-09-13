@@ -196,7 +196,8 @@ export default {
         <div v-else class="flex-1">
             <RouteStopsTimeline :route-stops="routeStops" :is-loading="stopsLoading" :error="stopsError"
                 :selected-route="selectedRouteForStops" :stops-count="stopsCount" :has-stops="hasStops"
-                @close="handleCloseTimeline" @retry="handleRetryStops" />
+                :route-color="selectedRouteForStops?.color || '#88807E'" @close="handleCloseTimeline"
+                @retry="handleRetryStops" />
         </div>
 
         <!-- Footer -->

@@ -55,6 +55,7 @@ import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { MAP_CONFIG, API_CONFIG, ERROR_MESSAGES } from '../constants'
 import { getRouteById } from '../data/busRoutes'
 import { useGeolocation } from '../composables/useGeolocation'
+import { useMapStops } from '../composables/useMapStops'
 
 export default {
     name: 'MetroMap',
@@ -72,14 +73,32 @@ export default {
     setup(props, { emit }) {
         const map = ref(null)
         const vehicleLayer = ref(null)
+        const stopsLayer = ref(null)
         const userLocationLayer = ref(null)
         const vehicles = ref([])
         const isLoading = ref(false)
         const error = ref(null)
         const refreshInterval = ref(null)
+        const showStops = ref(true)
 
         // GPS location functionality
         const { userLocation, isLocating, locationError, getCurrentLocation, startWatchingLocation, stopWatchingLocation } = useGeolocation()
+
+        // Stops functionality
+        const {
+            stops,
+            stopsWithRoutes,
+            stopsWithoutRoutes,
+            isLoading: stopsLoading,
+            error: stopsError,
+            initialize: initializeStops,
+            getStopsByRoute
+        } = useMapStops()
+
+        // Debug stops data
+        watch(stops, (newStops) => {
+            console.log('Stops data updated:', newStops.length, 'stops')
+        }, { immediate: true })
 
         const fetchVehicles = async () => {
             try {
@@ -143,6 +162,49 @@ export default {
                 })
         }
 
+        const getStopMarkers = () => {
+            if (!showStops.value) {
+                console.log('Stops are disabled')
+                return []
+            }
+
+            // Use basic stops array directly
+            let stopsToShow = stops.value
+            console.log('Total stops available:', stopsToShow.length)
+
+            // Filter stops by selected route if one is selected
+            if (props.selectedRoute) {
+                stopsToShow = getStopsByRoute(props.selectedRoute.route_id)
+                console.log('Filtered stops for route:', stopsToShow.length)
+            }
+
+            console.log('Creating markers for', stopsToShow.length, 'stops')
+            return stopsToShow.map(stop => {
+                const lat = parseFloat(stop.stop_lat)
+                const lon = parseFloat(stop.stop_lon)
+
+                // Create popup content
+                const popup = `
+                    <div style="min-width: 200px;">
+                        <h3 style="margin: 0 0 8px 0; color: #333;">${stop.stop_name}</h3>
+                        <p style="margin: 4px 0; font-size: 12px; color: #666;">ID: ${stop.stop_id}</p>
+                        <p style="margin: 4px 0; font-size: 12px; color: #666;">Coordinates: ${lat.toFixed(4)}, ${lon.toFixed(4)}</p>
+                        ${stop.wheelchair_boarding === 1 ? '<p style="margin: 4px 0; font-size: 12px; color: #059669;">♿ Wheelchair accessible</p>' : ''}
+                    </div>
+                `
+
+                return {
+                    position: [lat, lon],
+                    stopId: stop.stop_id,
+                    stopName: stop.stop_name,
+                    routes: [],
+                    routeCount: 0,
+                    wheelchairAccessible: stop.wheelchair_boarding === 1,
+                    popup
+                }
+            })
+        }
+
         const initializeMap = () => {
             // Initialize map centered on Christchurch
             map.value = L.map('map').setView(MAP_CONFIG.DEFAULT_CENTER, MAP_CONFIG.DEFAULT_ZOOM)
@@ -192,6 +254,37 @@ export default {
             return userLocationHtml
         }
 
+        const createStopMarker = (stop) => {
+            // Different styles based on route count and accessibility
+            const size = stop.routeCount > 3 ? '16px' : '12px'
+            const backgroundColor = stop.wheelchairAccessible ? '#059669' : '#6b7280'
+            const borderColor = stop.routeCount > 1 ? '#3b82f6' : '#6b7280'
+
+            const stopHtml = `
+        <div class="stop-marker" style="
+          width: ${size};
+          height: ${size};
+          border-radius: 50%;
+          background-color: ${backgroundColor};
+          border: 2px solid ${borderColor};
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 8px;
+          color: white;
+          font-weight: bold;
+          text-shadow: 1px 1px 1px rgba(0,0,0,0.7);
+          cursor: pointer;
+          transition: transform 0.2s ease;
+        ">
+          ${stop.wheelchairAccessible ? '♿' : (stop.routeCount > 1 ? stop.routeCount : '●')}
+        </div>
+      `
+
+            return stopHtml
+        }
+
         const updateVehicleMarkers = () => {
             if (!map.value) return
 
@@ -216,6 +309,40 @@ export default {
 
             // Add all markers to the map
             vehicleLayer.value = L.layerGroup(markers).addTo(map.value)
+        }
+
+        const updateStopMarkers = () => {
+            console.log('🔄 updateStopMarkers called, map:', !!map.value, 'showStops:', showStops.value)
+            if (!map.value || !showStops.value) {
+                console.log('❌ Skipping stop markers - map or showStops not ready')
+                return
+            }
+
+            console.log('🧹 Clearing old stop markers...')
+            // Clear old stop markers
+            if (stopsLayer.value) {
+                map.value.removeLayer(stopsLayer.value)
+            }
+
+            console.log('🎯 Creating new stop markers...')
+            const stopMarkers = getStopMarkers().map(stop => {
+                const stopElement = createStopMarker(stop)
+                const marker = L.marker(stop.position, {
+                    icon: L.divIcon({
+                        html: stopElement,
+                        className: 'custom-stop-marker',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    })
+                }).bindPopup(stop.popup)
+
+                return marker
+            })
+
+            // Add all stop markers to the map
+            console.log(`📍 Adding ${stopMarkers.length} stop markers to map...`)
+            stopsLayer.value = L.layerGroup(stopMarkers).addTo(map.value)
+            console.log('✅ Stop markers added to map successfully')
         }
 
         const updateUserLocationMarker = () => {
@@ -268,18 +395,36 @@ export default {
         // Watch for vehicle data changes and update markers
         watch(vehicles, updateVehicleMarkers, { deep: true })
 
+        // Watch for stops data changes and update markers
+        watch(stops, updateStopMarkers, { deep: true })
+
         // Watch for user location changes and update marker
         watch(userLocation, updateUserLocationMarker)
 
         // Watch for selected route changes and update markers
-        watch(() => props.selectedRoute, updateVehicleMarkers)
+        watch(() => props.selectedRoute, () => {
+            updateVehicleMarkers()
+            updateStopMarkers()
+        })
+
+        // Watch for showStops changes
+        watch(showStops, updateStopMarkers)
 
         onMounted(async () => {
+            console.log('🚀 MetroMap onMounted starting...')
+
             // Initialize map first
             initializeMap()
+            console.log('✅ Map initialized')
 
-            // Then fetch vehicles and start auto-refresh
-            await fetchVehicles()
+            // Initialize stops and fetch vehicles in parallel
+            console.log('📡 Fetching stops and vehicles...')
+            await Promise.all([
+                initializeStops(),
+                fetchVehicles()
+            ])
+            console.log('✅ Stops and vehicles fetched')
+
             startAutoRefresh()
 
             // Try to get user location
@@ -289,6 +434,8 @@ export default {
             } catch (error) {
                 console.warn('Could not get user location:', error.message)
             }
+
+            console.log('🎯 MetroMap initialization complete')
         })
 
         onUnmounted(() => {
@@ -310,7 +457,11 @@ export default {
             userLocation,
             isLocating,
             locationError,
-            handleRequestLocation
+            handleRequestLocation,
+            showStops,
+            stopsLoading,
+            stopsError,
+            stopsWithRoutes
         }
     }
 }
@@ -321,6 +472,27 @@ export default {
     height: 100vh;
     flex: 1;
     position: relative;
+}
+
+/* Stop marker styles */
+:deep(.custom-stop-marker) {
+    background: transparent;
+    border: none;
+}
+
+:deep(.stop-marker) {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+:deep(.stop-marker:hover) {
+    transform: scale(1.2);
 }
 
 /* User location marker styles */

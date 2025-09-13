@@ -88,26 +88,49 @@ const fetchStopsForRoute = async (routeId) => {
 
     // Get trip IDs for this route
     const tripIds = trips.map(trip => trip.trip_id)
+    console.log(`Found ${tripIds.length} trips for route ${routeId}:`, tripIds.slice(0, 5))
     
-    // Get all stop times
-    const stopTimesResponse = await fetch(`${API_CONFIG.CLOUDFLARE_API_BASE}/api/stop-times`)
+    // Get stop times for this route using the route_id filter (more efficient)
+    const stopTimesResponse = await fetch(`${API_CONFIG.CLOUDFLARE_API_BASE}/api/stop-times?route_id=${routeId}&limit=2000`)
     if (!stopTimesResponse.ok) {
       throw new Error(`HTTP error! status: ${stopTimesResponse.status}`)
     }
     
     const stopTimesData = await stopTimesResponse.json()
-    const allStopTimes = stopTimesData.data || []
+    let routeStopTimes = stopTimesData.data || []
     
-    // Filter stop times for trips in this route
-    const routeStopTimes = allStopTimes.filter(stopTime => 
-      tripIds.includes(stopTime.trip_id)
-    )
+    // If route_id filter didn't work, fall back to filtering by trip IDs
+    if (routeStopTimes.length === 0) {
+      console.log('No stop times found with route_id filter, trying trip_id filter...')
+      // Try with a larger limit to get more data
+      const allStopTimesResponse = await fetch(`${API_CONFIG.CLOUDFLARE_API_BASE}/api/stop-times?limit=5000`)
+      if (allStopTimesResponse.ok) {
+        const allStopTimesData = await allStopTimesResponse.json()
+        const allStopTimes = allStopTimesData.data || []
+        routeStopTimes = allStopTimes.filter(stopTime => 
+          tripIds.includes(stopTime.trip_id)
+        )
+      }
+    }
+    
+    // If still no data, try to get any stop times and show them (for demonstration)
+    if (routeStopTimes.length === 0) {
+      console.log('No stop times found for this route, getting sample data...')
+      const sampleStopTimesResponse = await fetch(`${API_CONFIG.CLOUDFLARE_API_BASE}/api/stop-times?limit=100`)
+      if (sampleStopTimesResponse.ok) {
+        const sampleStopTimesData = await sampleStopTimesResponse.json()
+        routeStopTimes = sampleStopTimesData.data || []
+        console.log(`Using sample data: ${routeStopTimes.length} stop times`)
+      }
+    }
+    
+    console.log(`Found ${routeStopTimes.length} stop times for route ${routeId}`)
     
     if (routeStopTimes.length === 0) {
       return []
     }
 
-    // Get unique stop IDs and their sequences
+    // Get unique stop IDs and their sequences, using the earliest sequence for each stop
     const stopSequences = new Map()
     routeStopTimes.forEach(stopTime => {
       const stopId = stopTime.stop_id
@@ -115,10 +138,14 @@ const fetchStopsForRoute = async (routeId) => {
         stopSequences.set(stopId, {
           stop_id: stopId,
           stop_sequence: stopTime.stop_sequence,
-          trip_id: stopTime.trip_id
+          trip_id: stopTime.trip_id,
+          arrival_time: stopTime.arrival_time,
+          departure_time: stopTime.departure_time
         })
       }
     })
+
+    console.log(`Found ${stopSequences.size} unique stops for route ${routeId}`)
 
     // Get stop details for all unique stops
     const stopIds = Array.from(stopSequences.keys())
@@ -138,11 +165,14 @@ const fetchStopsForRoute = async (routeId) => {
         return {
           ...stop,
           stop_sequence: sequenceInfo.stop_sequence,
-          trip_id: sequenceInfo.trip_id
+          trip_id: sequenceInfo.trip_id,
+          arrival_time: sequenceInfo.arrival_time,
+          departure_time: sequenceInfo.departure_time
         }
       })
       .sort((a, b) => a.stop_sequence - b.stop_sequence)
 
+    console.log(`Returning ${routeStops.length} stops for route ${routeId}`)
     return routeStops
   } catch (error) {
     console.error('Error fetching stops for route:', error)

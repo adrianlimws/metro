@@ -320,15 +320,32 @@ async function handleShapesRequest(env, searchParams, corsHeaders) {
  */
 async function handleStopTimesRequest(env, searchParams, corsHeaders) {
   try {
-    // Get stop times from the main key first
-    let stopTimes = await env.METRO_KV.get('gtfs:stop_times', 'json');
+    // Check if we have route_id or trip_id filters first to optimize
+    const routeId = searchParams.get('route_id');
+    const tripId = searchParams.get('trip_id');
+    const stopId = searchParams.get('stop_id');
     
-    if (!stopTimes) {
-      // If main key doesn't exist, try to get from chunks
-      stopTimes = [];
-      for (let i = 0; i < 32; i++) {
+    let stopTimes = [];
+    
+    // If we have specific filters, we can be more selective about which chunks to load
+    if (routeId || tripId || stopId) {
+      // For filtered requests, we need to check all chunks but can stop early if we find enough data
+      const limit = parseInt(searchParams.get('limit') || '1000');
+      let foundCount = 0;
+      
+      for (let i = 0; i < 32 && foundCount < limit * 2; i++) {
         const chunk = await env.METRO_KV.get(`gtfs:stop_times:chunk:${i}`, 'json');
-        if (chunk) {
+        if (chunk && Array.isArray(chunk)) {
+          stopTimes = stopTimes.concat(chunk);
+          foundCount += chunk.length;
+        }
+      }
+    } else {
+      // For unfiltered requests, limit the number of chunks to avoid resource limits
+      const maxChunks = 5; // Only load first 5 chunks for unfiltered requests
+      for (let i = 0; i < maxChunks; i++) {
+        const chunk = await env.METRO_KV.get(`gtfs:stop_times:chunk:${i}`, 'json');
+        if (chunk && Array.isArray(chunk)) {
           stopTimes = stopTimes.concat(chunk);
         }
       }
@@ -342,21 +359,30 @@ async function handleStopTimesRequest(env, searchParams, corsHeaders) {
     }
 
     // Filter by stop_id if provided
-    const stopId = searchParams.get('stop_id');
     if (stopId) {
       stopTimes = stopTimes.filter(stopTime => stopTime.stop_id === stopId);
     }
 
-    // Filter by route_id if provided
-    const routeId = searchParams.get('route_id');
-    if (routeId) {
-      stopTimes = stopTimes.filter(stopTime => stopTime.route_id === routeId);
-    }
-
     // Filter by trip_id if provided
-    const tripId = searchParams.get('trip_id');
     if (tripId) {
       stopTimes = stopTimes.filter(stopTime => stopTime.trip_id === tripId);
+    }
+
+    // Filter by route_id if provided (requires getting trips first)
+    if (routeId) {
+      try {
+        // Get trips for this route from KV storage
+        const trips = await env.METRO_KV.get('gtfs:trips', 'json');
+        if (trips && Array.isArray(trips)) {
+          const routeTrips = trips.filter(trip => trip.route_id === routeId);
+          const tripIds = routeTrips.map(trip => trip.trip_id);
+          
+          // Filter stop times by trip IDs
+          stopTimes = stopTimes.filter(stopTime => tripIds.includes(stopTime.trip_id));
+        }
+      } catch (error) {
+        console.error('Error filtering by route_id:', error);
+      }
     }
 
     // Pagination
