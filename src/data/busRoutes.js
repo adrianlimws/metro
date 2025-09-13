@@ -1,6 +1,6 @@
 /**
  * Bus routes data for Christchurch Metro
- * Each route contains id, color, and name
+ * This is now a fallback - the app will use GTFS data from the API
  */
 export const busRoutes = [
   { id: '1',   color: '#87CEEB', name: 'Rangiora/Cashmere' },
@@ -34,6 +34,7 @@ export const busRoutes = [
   { id: 'Oa',  color: '#228B22', name: 'Orbiter' },
   { id: 'Oc',  color: '#228B22', name: 'Orbiter' }
 ]
+
 
 /**
  * Get a route by its ID

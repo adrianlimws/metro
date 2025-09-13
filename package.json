@@ -6,13 +6,19 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "netlify:dev": "netlify dev"
+    "netlify:dev": "netlify dev",
+    "prepare-gtfs": "node scripts/prepare-gtfs-for-kv.js",
+    "upload-gtfs": "node scripts/upload-gtfs-to-kv.js",
+    "clean-kv": "node scripts/clean-kv-storage.js",
+    "deploy-worker": "wrangler deploy",
+    "deploy-worker:staging": "wrangler deploy --env staging",
+    "worker:dev": "wrangler dev",
+    "worker:tail": "wrangler tail"
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
-    "gtfs-realtime-bindings": "^1.1.1",
+    "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
-    "node-fetch": "^3.3.2",
     "vue": "^3.4.0"
   },
   "devDependencies": {

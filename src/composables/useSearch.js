@@ -32,16 +32,10 @@ export function useSearch(items, searchFn, debounceMs = 300) {
     searchQuery.value = ''
   }
 
-  // Set search query
-  const setSearchQuery = (query) => {
-    searchQuery.value = query
-  }
-
   return {
     searchQuery,
     filteredItems,
     isSearching,
-    clearSearch,
-    setSearchQuery
+    clearSearch
   }
 }

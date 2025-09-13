@@ -1,0 +1,12 @@
+[
+  {
+    "agency_id": "Metro Canterbury",
+    "agency_name": "Metro Canterbury",
+    "agency_url": "https://www.metroinfo.co.nz/",
+    "agency_timezone": "Pacific/Auckland",
+    "agency_lang": "en",
+    "agency_phone": "+ 64 3 366 88 55",
+    "agency_fare_url": "https://www.metroinfo.co.nz/metrocard/",
+    "agency_email": "metro@ecan.govt.nz"
+  }
+]
