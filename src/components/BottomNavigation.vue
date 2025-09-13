@@ -43,11 +43,7 @@ export default {
         return {
             routes: busRoutes,
             selectedRoute,
-            handleRouteChange,
-            countdownSeconds: props.countdownSeconds,
-            countdownPercentage: props.countdownPercentage,
-            isLoading: props.isLoading,
-            error: props.error
+            handleRouteChange
         }
     }
 }
@@ -88,8 +84,8 @@ export default {
                     </div>
                 </div>
 
-                <!-- Bottom row: Route selector -->
-                <div>
+                <!-- Bottom row: Route selector - memoized to prevent unnecessary re-renders -->
+                <div v-memo="[selectedRoute]">
                     <select v-model="selectedRoute" @change="handleRouteChange"
                         class="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         style="touch-action: manipulation; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
