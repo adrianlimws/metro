@@ -62,6 +62,10 @@ export default {
         sidebarOpen: {
             type: Boolean,
             default: false
+        },
+        selectedRoute: {
+            type: Object,
+            default: null
         }
     },
     emits: ['data-fetched'],
@@ -104,7 +108,16 @@ export default {
 
         const getVehicleMarkers = () => {
             return vehicles.value
-                .filter(entity => entity.vehicle && entity.vehicle.position)
+                .filter(entity => {
+                    // Filter by selected route if one is selected
+                    if (props.selectedRoute) {
+                        const fullRouteId = entity.vehicle?.trip?.routeId || 'Unknown'
+                        const routeId = fullRouteId.split('_')[0]
+                        return routeId === props.selectedRoute.id && entity.vehicle && entity.vehicle.position
+                    }
+                    // If no route selected, show all vehicles
+                    return entity.vehicle && entity.vehicle.position
+                })
                 .map(entity => {
                     const { latitude, longitude } = entity.vehicle.position
                     const vehicleId = entity.vehicle.vehicle?.id || 'Unknown'
@@ -257,6 +270,9 @@ export default {
 
         // Watch for user location changes and update marker
         watch(userLocation, updateUserLocationMarker)
+
+        // Watch for selected route changes and update markers
+        watch(() => props.selectedRoute, updateVehicleMarkers)
 
         onMounted(async () => {
             // Initialize map first

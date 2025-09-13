@@ -16,14 +16,19 @@ export default {
             required: true
         }
     },
-    emits: ['route-selected'],
+    emits: ['route-selected', 'show-stops'],
     setup(props, { emit }) {
         const handleRouteSelected = (route) => {
             emit('route-selected', route)
         }
 
+        const handleShowStops = (route) => {
+            emit('show-stops', route)
+        }
+
         return {
-            handleRouteSelected
+            handleRouteSelected,
+            handleShowStops
         }
     }
 }
@@ -47,7 +52,8 @@ export default {
 
         <!-- Routes Grid -->
         <div v-else class="p-2 sm:p-3 lg:p-4 flex flex-col gap-2 sm:gap-3">
-            <RouteCard v-for="route in routes" :key="route.id" :route="route" @route-selected="handleRouteSelected" />
+            <RouteCard v-for="route in routes" :key="route.id" :route="route" @route-selected="handleRouteSelected"
+                @show-stops="handleShowStops" />
         </div>
     </div>
 </template>

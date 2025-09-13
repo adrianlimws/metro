@@ -11,7 +11,8 @@ export const MAP_CONFIG = {
 // API configuration
 export const API_CONFIG = {
   VEHICLES_ENDPOINT: '/.netlify/functions/vehicles',
-  METRO_API_URL: 'https://apis.metroinfo.co.nz/rti/gtfsrt/v1/vehicle-positions.pb'
+  METRO_API_URL: 'https://apis.metroinfo.co.nz/rti/gtfsrt/v1/vehicle-positions.pb',
+  CLOUDFLARE_API_BASE: 'https://metro-gtfs-api-simple.adrianlimws.workers.dev',
 }
 
 // Error messages

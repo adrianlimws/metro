@@ -1,11 +1,12 @@
 <template>
     <div id="app" class="h-screen w-full m-0 p-0 overflow-hidden">
         <div class="flex h-full">
-            <MetroMap ref="metroMap" :sidebar-open="sidebarOpen" @data-fetched="resetCountdown" />
+            <MetroMap ref="metroMap" :sidebar-open="sidebarOpen" :selected-route="selectedRoute"
+                @data-fetched="resetCountdown" />
             <!-- Desktop Sidebar -->
             <RouteSidebar ref="sidebar" :countdown-seconds="countdownSeconds"
                 :countdown-percentage="countdownPercentage" :is-loading="isLoading" :error="error"
-                @sidebar-toggle="handleSidebarToggle" />
+                @sidebar-toggle="handleSidebarToggle" @route-selected="handleRouteSelected" />
         </div>
 
         <!-- Mobile/Tablet Bottom Navigation -->
@@ -31,6 +32,7 @@ export default {
     },
     setup() {
         const sidebarOpen = ref(true) // Always open on desktop, controlled by CSS
+        const selectedRoute = ref(null) // Currently selected route
 
         // Countdown timer data
         const countdownSeconds = ref(0)
@@ -48,8 +50,8 @@ export default {
         }
 
         const handleRouteSelected = (route) => {
-            // Handle route selection from bottom navigation
-            // You can add route selection logic here if needed
+            // Handle route selection from sidebar or bottom navigation
+            selectedRoute.value = route
             console.log('Route selected:', route)
         }
 
@@ -103,6 +105,7 @@ export default {
 
         return {
             sidebarOpen,
+            selectedRoute,
             toggleSidebar,
             handleSidebarToggle,
             handleRouteSelected,

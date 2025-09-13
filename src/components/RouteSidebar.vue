@@ -2,7 +2,9 @@
 import { ref, computed, watch } from 'vue'
 import { busRoutes, searchRoutes } from '../data/busRoutes.js'
 import { useSearch } from '../composables/useSearch'
-import { MAP_CONFIG } from '../constants'
+import { useRouteStops } from '../composables/useRouteStops'
+import { MAP_CONFIG, API_CONFIG } from '../constants'
+import RouteStopsTimeline from './RouteStopsTimeline.vue'
 import {
     SidebarHeader,
     RefreshCountdown,
@@ -18,7 +20,8 @@ export default {
         RefreshCountdown,
         SearchSection,
         RoutesList,
-        SidebarFooter
+        SidebarFooter,
+        RouteStopsTimeline
     },
     props: {
         countdownSeconds: {
@@ -41,6 +44,21 @@ export default {
     emits: ['sidebar-toggle', 'route-selected'],
     setup(props, { emit }) {
         const routes = ref(busRoutes || [])
+        const showTimeline = ref(false)
+        const selectedRouteForStops = ref(null)
+        const routesInitialized = ref(false)
+
+        // Use route stops composable
+        const {
+            routeStops,
+            isLoading: stopsLoading,
+            error: stopsError,
+            selectedRoute,
+            fetchRouteStops,
+            clearRouteStops,
+            stopsCount,
+            hasStops
+        } = useRouteStops()
 
         // Use search composable with debouncing
         const { searchQuery, filteredItems: filteredRoutes, clearSearch } = useSearch(
@@ -48,6 +66,48 @@ export default {
             searchRoutes,
             300
         )
+
+        // Fetch routes from API on component mount
+        const initializeRoutes = async () => {
+            if (routesInitialized.value) {
+                return
+            }
+
+            try {
+                const response = await fetch(`${API_CONFIG.CLOUDFLARE_API_BASE}/api/routes`)
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`)
+                }
+                const data = await response.json()
+                const apiRoutesData = data.data || []
+
+                // Group routes by short name and take the first one of each group
+                const routeMap = new Map()
+                apiRoutesData.forEach(route => {
+                    if (!routeMap.has(route.route_short_name)) {
+                        routeMap.set(route.route_short_name, {
+                            id: route.route_short_name,
+                            name: route.route_long_name,
+                            color: route.route_color ? `#${route.route_color}` : '#000000',
+                            route_id: route.route_id // Store the full route_id for API calls
+                        })
+                    }
+                })
+                routes.value = Array.from(routeMap.values())
+                routesInitialized.value = true
+            } catch (error) {
+                console.warn('Failed to fetch routes from API, using fallback data:', error)
+                // Keep using the fallback busRoutes data
+            }
+        }
+
+        // Initialize routes when component is created
+        initializeRoutes()
+
+        // Watch for changes in routes to ensure colors persist
+        watch(routes, (newRoutes) => {
+            // Routes changed - colors should persist
+        }, { deep: true })
 
         // Methods
         const toggleSidebar = () => {
@@ -63,6 +123,26 @@ export default {
             emit('route-selected', route)
         }
 
+        const handleShowRouteStops = async (route) => {
+            selectedRouteForStops.value = route
+            showTimeline.value = true
+            // Use the full route_id for API calls, fallback to route.id for mock data
+            const routeId = route.route_id || route.id
+            await fetchRouteStops(routeId)
+        }
+
+        const handleCloseTimeline = () => {
+            showTimeline.value = false
+            selectedRouteForStops.value = null
+            clearRouteStops()
+        }
+
+        const handleRetryStops = async () => {
+            if (selectedRouteForStops.value) {
+                await fetchRouteStops(selectedRouteForStops.value.id)
+            }
+        }
+
         return {
             routes,
             searchQuery,
@@ -71,6 +151,17 @@ export default {
             clearSearch,
             handleSearchUpdate,
             handleRouteSelected,
+            handleShowRouteStops,
+            handleCloseTimeline,
+            handleRetryStops,
+            showTimeline,
+            selectedRouteForStops,
+            routeStops,
+            stopsLoading,
+            stopsError,
+            selectedRoute,
+            stopsCount,
+            hasStops,
             countdownSeconds: computed(() => props.countdownSeconds),
             countdownPercentage: computed(() => props.countdownPercentage),
             isLoading: computed(() => props.isLoading),
@@ -95,8 +186,18 @@ export default {
         <SearchSection :search-query="searchQuery" @update:search-query="handleSearchUpdate"
             @clear-search="clearSearch" />
 
-        <!-- Routes List -->
-        <RoutesList :routes="filteredRoutes" :search-query="searchQuery" @route-selected="handleRouteSelected" />
+        <!-- Routes List or Timeline -->
+        <div v-if="!showTimeline" class="flex-1 flex flex-col">
+            <RoutesList :routes="filteredRoutes" :search-query="searchQuery" @route-selected="handleRouteSelected"
+                @show-stops="handleShowRouteStops" />
+        </div>
+
+        <!-- Route Stops Timeline -->
+        <div v-else class="flex-1">
+            <RouteStopsTimeline :route-stops="routeStops" :is-loading="stopsLoading" :error="stopsError"
+                :selected-route="selectedRouteForStops" :stops-count="stopsCount" :has-stops="hasStops"
+                @close="handleCloseTimeline" @retry="handleRetryStops" />
+        </div>
 
         <!-- Footer -->
         <SidebarFooter />

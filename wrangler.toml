@@ -1,0 +1,17 @@
+name = "metro-gtfs-api-simple"
+main = "src/worker.js"
+compatibility_date = "2023-10-30"
+
+[vars]
+ENVIRONMENT = "production"
+
+[[kv_namespaces]]
+binding = "METRO_KV"
+id = "a5203d8b97c8449b8ac7559ef8753810"
+preview_id = "a5203d8b97c8449b8ac7559ef8753810"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
