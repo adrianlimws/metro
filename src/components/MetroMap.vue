@@ -23,6 +23,29 @@
                 </div>
             </div>
         </div>
+
+        <!-- Location permission button -->
+        <div v-if="locationError && !userLocation" class="location-permission-indicator">
+            <div class="location-permission-content">
+                <div class="location-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="location-title">Enable Location</p>
+                    <p class="location-message">{{ locationError }}</p>
+                    <button @click="handleRequestLocation" :disabled="isLocating" class="location-button">
+                        <span v-if="isLocating">Locating...</span>
+                        <span v-else>Enable Location</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -31,6 +54,7 @@ import L from 'leaflet'
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { MAP_CONFIG, API_CONFIG, ERROR_MESSAGES } from '../constants'
 import { getRouteById } from '../data/busRoutes'
+import { useGeolocation } from '../composables/useGeolocation'
 
 export default {
     name: 'MetroMap',
@@ -44,10 +68,14 @@ export default {
     setup(props, { emit }) {
         const map = ref(null)
         const vehicleLayer = ref(null)
+        const userLocationLayer = ref(null)
         const vehicles = ref([])
         const isLoading = ref(false)
         const error = ref(null)
         const refreshInterval = ref(null)
+
+        // GPS location functionality
+        const { userLocation, isLocating, locationError, getCurrentLocation, startWatchingLocation, stopWatchingLocation } = useGeolocation()
 
         const fetchVehicles = async () => {
             try {
@@ -139,6 +167,18 @@ export default {
             return circleHtml
         }
 
+        const createUserLocationMarker = () => {
+            // Create HTML string for the user location marker with pulsing animation
+            const userLocationHtml = `
+        <div class="user-location-marker">
+          <div class="user-location-pulse"></div>
+          <div class="user-location-dot"></div>
+        </div>
+      `
+
+            return userLocationHtml
+        }
+
         const updateVehicleMarkers = () => {
             if (!map.value) return
 
@@ -165,6 +205,29 @@ export default {
             vehicleLayer.value = L.layerGroup(markers).addTo(map.value)
         }
 
+        const updateUserLocationMarker = () => {
+            if (!map.value || !userLocation.value) return
+
+            // Clear old user location marker
+            if (userLocationLayer.value) {
+                map.value.removeLayer(userLocationLayer.value)
+            }
+
+            // Create user location marker
+            const userLocationElement = createUserLocationMarker()
+            const userMarker = L.marker(userLocation.value, {
+                icon: L.divIcon({
+                    html: userLocationElement,
+                    className: 'custom-user-location-marker',
+                    iconSize: [30, 30],
+                    iconAnchor: [20, 20]
+                })
+            }).bindPopup('Your location')
+
+            // Add user location marker to the map
+            userLocationLayer.value = L.layerGroup([userMarker]).addTo(map.value)
+        }
+
         const startAutoRefresh = () => {
             if (refreshInterval.value) {
                 clearInterval(refreshInterval.value)
@@ -180,8 +243,20 @@ export default {
             }
         }
 
+        const handleRequestLocation = async () => {
+            try {
+                await getCurrentLocation()
+                startWatchingLocation()
+            } catch (error) {
+                console.warn('Could not get user location:', error.message)
+            }
+        }
+
         // Watch for vehicle data changes and update markers
         watch(vehicles, updateVehicleMarkers, { deep: true })
+
+        // Watch for user location changes and update marker
+        watch(userLocation, updateUserLocationMarker)
 
         onMounted(async () => {
             // Initialize map first
@@ -190,10 +265,19 @@ export default {
             // Then fetch vehicles and start auto-refresh
             await fetchVehicles()
             startAutoRefresh()
+
+            // Try to get user location
+            try {
+                await getCurrentLocation()
+                startWatchingLocation()
+            } catch (error) {
+                console.warn('Could not get user location:', error.message)
+            }
         })
 
         onUnmounted(() => {
             stopAutoRefresh()
+            stopWatchingLocation()
             if (map.value) {
                 map.value.remove()
             }
@@ -206,7 +290,11 @@ export default {
         return {
             mapClasses,
             isLoading,
-            error
+            error,
+            userLocation,
+            isLocating,
+            locationError,
+            handleRequestLocation
         }
     }
 }
@@ -219,6 +307,121 @@ export default {
     position: relative;
 }
 
+/* User location marker styles */
+:deep(.custom-user-location-marker) {
+    background: transparent;
+    border: none;
+}
+
+:deep(.user-location-marker) {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+:deep(.user-location-dot) {
+    width: 12px;
+    height: 12px;
+    background-color: #3b82f6;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+    position: relative;
+}
+
+:deep(.user-location-pulse) {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background-color: #3b82f6;
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: user-location-pulse 2s infinite;
+    z-index: 1;
+}
+
+@keyframes user-location-pulse {
+    0% {
+        transform: scale(0.5);
+        opacity: 0.3;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.1;
+    }
+
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* Location permission indicator styles */
+.location-permission-indicator {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(4px);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 300px;
+}
+
+.location-permission-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.location-icon {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: #3b82f6;
+}
+
+.location-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 0.25rem 0;
+    font-size: 0.875rem;
+}
+
+.location-message {
+    color: #6b7280;
+    margin: 0 0 0.75rem 0;
+    font-size: 0.75rem;
+    line-height: 1.25;
+}
+
+.location-button {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.location-button:hover:not(:disabled) {
+    background-color: #2563eb;
+}
+
+.location-button:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}
 
 .loading-indicator {
     position: absolute;
