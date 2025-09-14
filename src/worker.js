@@ -30,6 +30,8 @@ export default {
           return await handleStopsRequest(env, searchParams, corsHeaders);
         case '/api/routes':
           return await handleRoutesRequest(env, searchParams, corsHeaders);
+        case '/api/routes/stops':
+          return await handleRouteStopsRequest(env, searchParams, corsHeaders);
         case '/api/agency':
           return await handleAgencyRequest(env, corsHeaders);
         case '/api/calendar':
@@ -437,6 +439,12 @@ async function handleTripsRequest(env, searchParams, corsHeaders) {
       filteredTrips = trips.filter(trip => trip.route_id === routeId);
     }
 
+    // Filter by trip_id if provided
+    const tripId = searchParams.get('trip_id');
+    if (tripId) {
+      filteredTrips = filteredTrips.filter(trip => trip.trip_id === tripId);
+    }
+
     // Filter by service_id if provided
     const serviceId = searchParams.get('service_id');
     if (serviceId) {
@@ -455,6 +463,85 @@ async function handleTripsRequest(env, searchParams, corsHeaders) {
   } catch (error) {
     console.error('Trips request error:', error);
     return new Response(JSON.stringify({ error: 'Failed to fetch trips data' }), {
+      status: 500,
+      headers: corsHeaders,
+    });
+  }
+}
+
+/**
+ * Handle route stops request - get all stops for a specific route
+ */
+async function handleRouteStopsRequest(env, searchParams, corsHeaders) {
+  try {
+    const routeId = searchParams.get('route_id');
+    
+    if (!routeId) {
+      return new Response(JSON.stringify({ error: 'route_id parameter is required' }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    // Get trips for this route
+    const trips = await env.METRO_KV.get('gtfs:trips', 'json');
+    if (!trips) {
+      return new Response(JSON.stringify({ error: 'Trips data not found' }), {
+        status: 404,
+        headers: corsHeaders,
+      });
+    }
+
+    const routeTrips = trips.filter(trip => trip.route_id === routeId);
+    if (routeTrips.length === 0) {
+      return new Response(JSON.stringify({ 
+        data: [],
+        message: `No trips found for route ${routeId}`,
+        total: 0
+      }), {
+        headers: corsHeaders,
+      });
+    }
+
+    const tripIds = routeTrips.map(trip => trip.trip_id);
+
+    // Get stop-times for these trips
+    const stopTimes = await env.METRO_KV.get('gtfs:stop_times', 'json');
+    if (!stopTimes) {
+      return new Response(JSON.stringify({ error: 'Stop times data not found' }), {
+        status: 404,
+        headers: corsHeaders,
+      });
+    }
+
+    const routeStopTimes = stopTimes.filter(st => tripIds.includes(st.trip_id));
+    const stopIds = [...new Set(routeStopTimes.map(st => st.stop_id))];
+
+    // Get stops
+    const stops = await env.METRO_KV.get('gtfs:stops', 'json');
+    if (!stops) {
+      return new Response(JSON.stringify({ error: 'Stops data not found' }), {
+        status: 404,
+        headers: corsHeaders,
+      });
+    }
+
+    const routeStops = stops.filter(stop => stopIds.includes(stop.stop_id));
+
+    return new Response(JSON.stringify({
+      data: routeStops,
+      route_id: routeId,
+      total: routeStops.length,
+      trip_count: routeTrips.length
+    }), {
+      headers: {
+        ...corsHeaders,
+        'Cache-Control': 'public, max-age=1800', // 30 minutes cache
+      },
+    });
+  } catch (error) {
+    console.error('Route stops request error:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch route stops data' }), {
       status: 500,
       headers: corsHeaders,
     });

@@ -110,17 +110,32 @@ export function useMapStops() {
   /**
    * Get stops that are served by a specific route
    */
-  const getStopsForRoute = (routeId) => {
-    const routeStops = []
-    stopRouteConnections.value.forEach((routes, stopId) => {
-      if (routes.some(route => route.route_id === routeId)) {
-        const stop = stops.value.find(s => s.stop_id === stopId)
-        if (stop) {
-          routeStops.push(stop)
-        }
+  const getStopsForRoute = async (routeId) => {
+    if (!stops.value.length) return []
+    
+    try {
+      // Use route_id directly in stop-times (if the API supports it)
+      const stopTimesResponse = await fetch(`${API_CONFIG.CLOUDFLARE_API_BASE}/api/stop-times?route_id=${routeId}`)
+      const stopTimes = await stopTimesResponse.json()
+      
+      if (!stopTimes.data || stopTimes.data.length === 0) {
+        console.log(`No stop-times found for route ${routeId}`)
+        return []
       }
-    })
-    return routeStops
+      
+      // Get unique stop IDs
+      const stopIds = [...new Set(stopTimes.data.map(st => st.stop_id))]
+      console.log(`Found ${stopIds.length} unique stops for route ${routeId}`)
+      
+      // Filter stops
+      const routeStops = stops.value.filter(stop => stopIds.includes(stop.stop_id))
+      console.log(`Filtered to ${routeStops.length} stops for route ${routeId}`)
+      
+      return routeStops
+    } catch (error) {
+      console.error('Error getting stops for route:', error)
+      return []
+    }
   }
 
   /**

@@ -162,21 +162,15 @@ export default {
                 })
         }
 
-        const getStopMarkers = () => {
+        const getStopMarkers = async () => {
             if (!showStops.value) {
                 console.log('Stops are disabled')
                 return []
             }
 
-            // Use basic stops array directly
+            // Use basic stops array directly - always show all stops
             let stopsToShow = stops.value
             console.log('Total stops available:', stopsToShow.length)
-
-            // Filter stops by selected route if one is selected
-            if (props.selectedRoute) {
-                stopsToShow = getStopsByRoute(props.selectedRoute.route_id)
-                console.log('Filtered stops for route:', stopsToShow.length)
-            }
 
             console.log('Creating markers for', stopsToShow.length, 'stops')
             return stopsToShow.map(stop => {
@@ -311,7 +305,7 @@ export default {
             vehicleLayer.value = L.layerGroup(markers).addTo(map.value)
         }
 
-        const updateStopMarkers = () => {
+        const updateStopMarkers = async () => {
             console.log('🔄 updateStopMarkers called, map:', !!map.value, 'showStops:', showStops.value)
             if (!map.value || !showStops.value) {
                 console.log('❌ Skipping stop markers - map or showStops not ready')
@@ -325,7 +319,8 @@ export default {
             }
 
             console.log('🎯 Creating new stop markers...')
-            const stopMarkers = getStopMarkers().map(stop => {
+            const stopMarkersData = await getStopMarkers()
+            const stopMarkers = stopMarkersData.map(stop => {
                 const stopElement = createStopMarker(stop)
                 const marker = L.marker(stop.position, {
                     icon: L.divIcon({
