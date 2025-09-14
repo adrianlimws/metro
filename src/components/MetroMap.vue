@@ -56,6 +56,7 @@ import { MAP_CONFIG, API_CONFIG, ERROR_MESSAGES } from '../constants'
 import { getRouteById } from '../data/busRoutes'
 import { useGeolocation } from '../composables/useGeolocation'
 import { useMapStops } from '../composables/useMapStops'
+import { useRouteShapes } from '../composables/useRouteShapes'
 
 export default {
     name: 'MetroMap',
@@ -74,6 +75,7 @@ export default {
         const map = ref(null)
         const vehicleLayer = ref(null)
         const stopsLayer = ref(null)
+        const routeShapesLayer = ref(null)
         const userLocationLayer = ref(null)
         const vehicles = ref([])
         const isLoading = ref(false)
@@ -94,6 +96,15 @@ export default {
             initialize: initializeStops,
             getStopsByRoute
         } = useMapStops()
+
+        // Route shapes functionality
+        const {
+            getRouteShapes,
+            clearRouteShapes,
+            getRouteColor,
+            isLoading: shapesLoading,
+            error: shapesError
+        } = useRouteShapes()
 
         // Debug stops data
         watch(stops, (newStops) => {
@@ -363,6 +374,66 @@ export default {
             userLocationLayer.value = L.layerGroup([userMarker]).addTo(map.value)
         }
 
+        const updateRouteShapes = async () => {
+            console.log('🔄 updateRouteShapes called, map:', !!map.value, 'selectedRoute:', props.selectedRoute?.id)
+            if (!map.value) {
+                console.log('❌ Skipping route shapes - map not ready')
+                return
+            }
+
+            console.log('🧹 Clearing old route shapes...')
+            // Clear old route shape lines
+            if (routeShapesLayer.value) {
+                map.value.removeLayer(routeShapesLayer.value)
+                routeShapesLayer.value = null
+            }
+
+            // If no route selected, don't show any shapes
+            if (!props.selectedRoute) {
+                console.log('❌ No route selected - no shapes to display')
+                return
+            }
+
+            try {
+                console.log(`🎯 Fetching shapes for route ${props.selectedRoute.id}...`)
+                const shapesData = await getRouteShapes(props.selectedRoute.route_id || props.selectedRoute.id)
+
+                if (shapesData.length === 0) {
+                    console.log(`❌ No shapes found for route ${props.selectedRoute.id}`)
+                    return
+                }
+
+                console.log(`📍 Creating ${shapesData.length} shape lines...`)
+
+                // Get route color (async)
+                const routeColor = props.selectedRoute.color || await getRouteColor(props.selectedRoute.route_id || props.selectedRoute.id)
+
+                const shapeLines = shapesData.map(shape => {
+                    return L.polyline(shape.points, {
+                        color: routeColor,
+                        weight: 4,
+                        opacity: 0.8,
+                        smoothFactor: 1,
+                        className: 'route-shape-line'
+                    }).bindPopup(`
+                        <div style="min-width: 200px;">
+                            <h3 style="margin: 0 0 8px 0; color: #333;">Route ${props.selectedRoute.id}</h3>
+                            <p style="margin: 4px 0; font-size: 12px; color: #666;">Shape ID: ${shape.shapeId}</p>
+                            <p style="margin: 4px 0; font-size: 12px; color: #666;">Points: ${shape.points.length}</p>
+                            <p style="margin: 4px 0; font-size: 12px; color: #666;">${props.selectedRoute.name}</p>
+                        </div>
+                    `)
+                })
+
+                // Add all shape lines to the map
+                routeShapesLayer.value = L.layerGroup(shapeLines).addTo(map.value)
+                console.log(`✅ Added ${shapeLines.length} route shape lines to map`)
+
+            } catch (error) {
+                console.error('Error updating route shapes:', error)
+            }
+        }
+
         const startAutoRefresh = () => {
             if (refreshInterval.value) {
                 clearInterval(refreshInterval.value)
@@ -400,6 +471,7 @@ export default {
         watch(() => props.selectedRoute, () => {
             updateVehicleMarkers()
             updateStopMarkers()
+            updateRouteShapes()
         })
 
         // Watch for showStops changes
@@ -456,7 +528,9 @@ export default {
             showStops,
             stopsLoading,
             stopsError,
-            stopsWithRoutes
+            stopsWithRoutes,
+            shapesLoading,
+            shapesError
         }
     }
 }
@@ -643,7 +717,7 @@ export default {
     position: absolute;
     top: 1rem;
     left: 1rem;
-    z-index: 10;
+    z-index: 1002;
     background-color: #fef2f2;
     border: 1px solid #fecaca;
     border-radius: 0.5rem;
@@ -710,5 +784,15 @@ export default {
 .route-circle-marker:hover {
     z-index: 1001;
     transform: scale(1.2);
+}
+
+/* Route shape line styles */
+:deep(.route-shape-line) {
+    transition: opacity 0.3s ease;
+}
+
+:deep(.route-shape-line:hover) {
+    opacity: 1 !important;
+    stroke-width: 6 !important;
 }
 </style>
