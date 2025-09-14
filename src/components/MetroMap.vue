@@ -549,7 +549,7 @@ export default {
     position: absolute;
     top: 1rem;
     right: 1rem;
-    z-index: 10;
+    z-index: 1002;
     background-color: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(4px);
     border-radius: 0.5rem;
@@ -610,7 +610,7 @@ export default {
     position: absolute;
     top: 1rem;
     left: 1rem;
-    z-index: 10;
+    z-index: 1002;
     background-color: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(4px);
     border-radius: 0.5rem;
